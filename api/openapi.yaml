@@ -1,0 +1,217 @@
+openapi: 3.0.3
+info:
+  title: Prayer Service API
+  version: 1.0.0
+  description: Время намаза и направление киблы
+
+servers:
+  - url: http://localhost:8080
+
+paths:
+  /health:
+    get:
+      operationId: getHealth
+      summary: Проверка, что сервис жив
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+
+  /api/v1/prayer-times:
+    get:
+      operationId: getPrayerTimes
+      summary: Время намаза по координатам
+      parameters:
+        - $ref: "#/components/parameters/Lat"
+        - $ref: "#/components/parameters/Lon"
+        - name: date
+          in: query
+          required: false
+          description: Дата в формате YYYY-MM-DD. По умолчанию — сегодня.
+          schema:
+            type: string
+            format: date
+        - name: school
+          in: query
+          required: false
+          description: "Мазхаб для времени Аср: 0 — шафиитский, 1 — ханафитский"
+          schema:
+            type: integer
+            enum: [0, 1]
+            default: 1
+      responses:
+        "200":
+          description: Время намаза
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PrayerTimesResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "502":
+          $ref: "#/components/responses/BadGateway"
+
+  /api/v1/qibla:
+    get:
+      operationId: getQibla
+      summary: Направление на Каабу
+      parameters:
+        - $ref: "#/components/parameters/Lat"
+        - $ref: "#/components/parameters/Lon"
+      responses:
+        "200":
+          description: Направление киблы
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QiblaResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+components:
+  parameters:
+    Lat:
+      name: lat
+      in: query
+      required: true
+      description: Широта
+      schema:
+        type: number
+        format: double
+        minimum: -90
+        maximum: 90
+    Lon:
+      name: lon
+      in: query
+      required: true
+      description: Долгота
+      schema:
+        type: number
+        format: double
+        minimum: -180
+        maximum: 180
+
+  schemas:
+    Health:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          example: ok
+
+    Location:
+      type: object
+      required: [lat, lon, country]
+      properties:
+        lat:
+          type: number
+          format: double
+          example: 41.31
+        lon:
+          type: number
+          format: double
+          example: 69.24
+        country:
+          type: string
+          description: Код страны ISO 3166-1 alpha-2
+          example: UZ
+        city:
+          type: string
+          example: Душанбе
+
+    PrayerTime:
+      type: object
+      required: [start]
+      properties:
+        start:
+          type: string
+          description: Время начала, HH:MM
+          example: "04:50"
+        end:
+          type: string
+          description: Время окончания, HH:MM (есть не у всех источников)
+          example: "06:10"
+
+    Timings:
+      type: object
+      required: [fajr, sunrise, dhuhr, asr, maghrib, isha]
+      properties:
+        fajr:
+          $ref: "#/components/schemas/PrayerTime"
+        sunrise:
+          $ref: "#/components/schemas/PrayerTime"
+        dhuhr:
+          $ref: "#/components/schemas/PrayerTime"
+        asr:
+          $ref: "#/components/schemas/PrayerTime"
+        maghrib:
+          $ref: "#/components/schemas/PrayerTime"
+        isha:
+          $ref: "#/components/schemas/PrayerTime"
+
+    PrayerTimesResponse:
+      type: object
+      required: [date, location, source, timings]
+      properties:
+        date:
+          type: string
+          format: date
+          example: "2026-09-30"
+        hijri_date:
+          type: string
+          example: "18-04-1448"
+        location:
+          $ref: "#/components/schemas/Location"
+        source:
+          type: string
+          description: Откуда взяты данные
+          enum: [aladhan, shuroiulamo]
+        timings:
+          $ref: "#/components/schemas/Timings"
+
+    QiblaResponse:
+      type: object
+      required: [direction, distance_km]
+      properties:
+        direction:
+          type: number
+          format: double
+          description: Азимут на Каабу в градусах от истинного севера (0–360)
+          example: 240.3
+        distance_km:
+          type: number
+          format: double
+          example: 3420.5
+
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              example: invalid_coordinates
+            message:
+              type: string
+              example: lat must be between -90 and 90
+
+  responses:
+    BadRequest:
+      description: Неверные параметры запроса
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    BadGateway:
+      description: Внешний источник данных недоступен
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
