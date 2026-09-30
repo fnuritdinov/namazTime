@@ -1,6 +1,6 @@
 openapi: 3.0.3
 info:
-  title: Prayer Service API
+  title: nTime API
   version: 1.0.0
   description: Время намаза и направление киблы
 
@@ -8,18 +8,6 @@ servers:
   - url: http://localhost:8080
 
 paths:
-  /health:
-    get:
-      operationId: getHealth
-      summary: Проверка, что сервис жив
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Health"
-
   /api/v1/prayer-times:
     get:
       operationId: getPrayerTimes
@@ -95,14 +83,6 @@ components:
         maximum: 180
 
   schemas:
-    Health:
-      type: object
-      required: [status]
-      properties:
-        status:
-          type: string
-          example: ok
-
     Location:
       type: object
       required: [lat, lon, country]
@@ -110,15 +90,15 @@ components:
         lat:
           type: number
           format: double
-          example: 41.31
+          example: 38.56
         lon:
           type: number
           format: double
-          example: 69.24
+          example: 68.77
         country:
           type: string
           description: Код страны ISO 3166-1 alpha-2
-          example: UZ
+          example: TJ
         city:
           type: string
           example: Душанбе
@@ -187,20 +167,23 @@ components:
           format: double
           example: 3420.5
 
+    ErrorBody:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          example: invalid_coordinates
+        message:
+          type: string
+          example: lat must be between -90 and 90
+
     Error:
       type: object
       required: [error]
       properties:
         error:
-          type: object
-          required: [code, message]
-          properties:
-            code:
-              type: string
-              example: invalid_coordinates
-            message:
-              type: string
-              example: lat must be between -90 and 90
+          $ref: "#/components/schemas/ErrorBody"
 
   responses:
     BadRequest:

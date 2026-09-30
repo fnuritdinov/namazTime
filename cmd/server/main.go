@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"nTime/internal/config"
+	"nTime/internal/handler"
 	"net/http"
 	"os"
 	"os/signal"
@@ -68,6 +69,16 @@ func run(log *slog.Logger) error {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(code)
 		json.NewEncoder(w).Encode(status)
+	})
+
+	api := handler.New()
+	strictHandler := handler.NewStrictHandlerWithOptions(api, nil, handler.StrictHTTPServerOptions{
+		RequestErrorHandlerFunc:  handler.RequestErrorHandler,
+		ResponseErrorHandlerFunc: handler.InternalErrorHandler(log),
+	})
+	handler.HandlerWithOptions(strictHandler, handler.StdHTTPServerOptions{
+		BaseRouter:       mux,
+		ErrorHandlerFunc: handler.RequestErrorHandler,
 	})
 
 	srv := &http.Server{
