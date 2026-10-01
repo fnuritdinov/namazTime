@@ -28,11 +28,6 @@ func (s *Server) GetConfig(ctx context.Context, req GetConfigRequestObject) (Get
 	return nil, errNotImplemented
 }
 
-// GET /v1/calculation-methods — шаг C
-func (s *Server) ListCalculationMethods(ctx context.Context, req ListCalculationMethodsRequestObject) (ListCalculationMethodsResponseObject, error) {
-	return nil, errNotImplemented
-}
-
 // GET /v1/prayer-times — шаг D
 func (s *Server) GetPrayerTimes(ctx context.Context, req GetPrayerTimesRequestObject) (GetPrayerTimesResponseObject, error) {
 	return nil, errNotImplemented
