@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"nTime/internal/city"
 	"nTime/internal/config"
 	"nTime/internal/geo"
 	"nTime/internal/handler"
@@ -97,8 +98,8 @@ func run(log *slog.Logger) error {
 	}
 	log.Info("geo data loaded")
 
-	// API из openapi.yaml
-	api := handler.NewServer(prayerSvc, geoLoc)
+	cityRepo := city.NewRepository(db)
+	api := handler.NewServer(prayerSvc, geoLoc, cityRepo)
 	strictHandler := handler.NewStrictHandlerWithOptions(api, nil, handler.StrictHTTPServerOptions{
 		RequestErrorHandlerFunc:  handler.RequestErrorHandler,
 		ResponseErrorHandlerFunc: handler.InternalErrorHandler(log),
@@ -119,7 +120,7 @@ func run(log *slog.Logger) error {
 		Handler:           handler.RequestID(mux),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
-	
+
 	errCh := make(chan error, 1)
 	go func() {
 		log.Info("http server started", "port", cfg.HTTPPort)

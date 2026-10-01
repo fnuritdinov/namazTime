@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"nTime/internal/city"
 	"nTime/internal/geo"
 	"nTime/internal/prayer"
 )
@@ -11,34 +12,19 @@ import (
 type Server struct {
 	prayer *prayer.Service
 	geo    *geo.Locator
+	cities *city.Repository
 }
 
-func NewServer(prayerSvc *prayer.Service, geoLoc *geo.Locator) *Server {
-	return &Server{prayer: prayerSvc, geo: geoLoc}
+func NewServer(prayerSvc *prayer.Service, geoLoc *geo.Locator, cityRepo *city.Repository) *Server {
+	return &Server{prayer: prayerSvc, geo: geoLoc, cities: cityRepo}
 }
 
-// Проверка при компиляции: Server реализует все методы из openapi.yaml.
 var _ StrictServerInterface = (*Server)(nil)
 
 var errNotImplemented = errors.New("not implemented yet")
 
 // GET /v1/config — шаг E
 func (s *Server) GetConfig(ctx context.Context, req GetConfigRequestObject) (GetConfigResponseObject, error) {
-	return nil, errNotImplemented
-}
-
-// GET /v1/cities — шаг B
-func (s *Server) ListCities(ctx context.Context, req ListCitiesRequestObject) (ListCitiesResponseObject, error) {
-	return nil, errNotImplemented
-}
-
-// GET /v1/cities/nearest — шаг B
-func (s *Server) GetNearestCity(ctx context.Context, req GetNearestCityRequestObject) (GetNearestCityResponseObject, error) {
-	return nil, errNotImplemented
-}
-
-// GET /v1/cities/{cityId} — шаг B
-func (s *Server) GetCity(ctx context.Context, req GetCityRequestObject) (GetCityResponseObject, error) {
 	return nil, errNotImplemented
 }
 
