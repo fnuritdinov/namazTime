@@ -47,7 +47,7 @@ func (s *Service) GetTimings(ctx context.Context, lat, lon float64, date time.Ti
 	}
 
 	// 2. Идём в Aladhan
-	s.log.Info("fetching prayer times from provider", "lat", key.Lat, "lon", key.Lon, "date", key.Date.Format("2006-01-02"))
+	s.log.Info("fetching prayer times from provider", "date", key.Date.Format("2006-01-02"))
 	d, err = s.provider.Fetch(ctx, key.Lat, key.Lon, key.Date, key.Method, key.School)
 	if err != nil {
 		s.log.Error("provider fetch failed", "err", err)

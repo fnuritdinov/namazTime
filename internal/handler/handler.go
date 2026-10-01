@@ -3,14 +3,9 @@ package handler
 import (
 	"context"
 	"errors"
-	"fmt"
+
 	"nTime/internal/geo"
-	"time"
-
-	openapi_types "github.com/oapi-codegen/runtime/types"
-
 	"nTime/internal/prayer"
-	"nTime/internal/qibla"
 )
 
 type Server struct {
@@ -19,88 +14,40 @@ type Server struct {
 }
 
 func NewServer(prayerSvc *prayer.Service, geoLoc *geo.Locator) *Server {
-	return &Server{
-		prayer: prayerSvc,
-		geo:    geoLoc,
-	}
+	return &Server{prayer: prayerSvc, geo: geoLoc}
 }
 
+// Проверка при компиляции: Server реализует все методы из openapi.yaml.
 var _ StrictServerInterface = (*Server)(nil)
 
+var errNotImplemented = errors.New("not implemented yet")
+
+// GET /v1/config — шаг E
+func (s *Server) GetConfig(ctx context.Context, req GetConfigRequestObject) (GetConfigResponseObject, error) {
+	return nil, errNotImplemented
+}
+
+// GET /v1/cities — шаг B
+func (s *Server) ListCities(ctx context.Context, req ListCitiesRequestObject) (ListCitiesResponseObject, error) {
+	return nil, errNotImplemented
+}
+
+// GET /v1/cities/nearest — шаг B
+func (s *Server) GetNearestCity(ctx context.Context, req GetNearestCityRequestObject) (GetNearestCityResponseObject, error) {
+	return nil, errNotImplemented
+}
+
+// GET /v1/cities/{cityId} — шаг B
+func (s *Server) GetCity(ctx context.Context, req GetCityRequestObject) (GetCityResponseObject, error) {
+	return nil, errNotImplemented
+}
+
+// GET /v1/calculation-methods — шаг C
+func (s *Server) ListCalculationMethods(ctx context.Context, req ListCalculationMethodsRequestObject) (ListCalculationMethodsResponseObject, error) {
+	return nil, errNotImplemented
+}
+
+// GET /v1/prayer-times — шаг D
 func (s *Server) GetPrayerTimes(ctx context.Context, req GetPrayerTimesRequestObject) (GetPrayerTimesResponseObject, error) {
-	p := req.Params
-	if err := validateCoords(p.Lat, p.Lon); err != nil {
-		return GetPrayerTimes400JSONResponse{BadRequestJSONResponse(newError("invalid_coordinates", err.Error()))}, nil
-	}
-
-	// Дата: из запроса или сегодня (UTC)
-	date := time.Now().UTC()
-	if p.Date != nil {
-		date = p.Date.Time
-	}
-	date = time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.UTC)
-
-	// Мазхаб: по умолчанию ханафитский
-	school := 1
-	if p.School != nil {
-		school = int(*p.School)
-	}
-
-	d, err := s.prayer.GetTimings(ctx, p.Lat, p.Lon, date, school)
-	if errors.Is(err, prayer.ErrUpstream) {
-		return GetPrayerTimes502JSONResponse{BadGatewayJSONResponse(newError("upstream_unavailable", "prayer times provider is unavailable"))}, nil
-	}
-	if err != nil {
-		return nil, err // → 500, детали уйдут в лог
-	}
-
-	country := s.geo.Country(p.Lat, p.Lon)
-	return GetPrayerTimes200JSONResponse(toPrayerTimesResponse(p.Lat, p.Lon, country, d)), nil
-}
-
-// toPrayerTimesResponse переводит наши типы в типы API.
-func toPrayerTimesResponse(lat, lon float64, country string, d prayer.DayTimings) PrayerTimesResponse {
-	t := d.Timings
-	resp := PrayerTimesResponse{
-		Date:     openapi_types.Date{Time: d.Date},
-		Location: Location{Lat: lat, Lon: lon, Country: country}, // страну определим на шаге 6
-		Source:   PrayerTimesResponseSource(d.Source),
-		Timings: Timings{
-			Fajr:    PrayerTime{Start: t.Fajr},
-			Sunrise: PrayerTime{Start: t.Sunrise},
-			Dhuhr:   PrayerTime{Start: t.Dhuhr},
-			Asr:     PrayerTime{Start: t.Asr},
-			Maghrib: PrayerTime{Start: t.Maghrib},
-			Isha:    PrayerTime{Start: t.Isha},
-		},
-	}
-	if d.HijriDate != "" {
-		resp.HijriDate = &d.HijriDate
-	}
-	return resp
-}
-
-func (s *Server) GetQibla(ctx context.Context, req GetQiblaRequestObject) (GetQiblaResponseObject, error) {
-	lat, lon := req.Params.Lat, req.Params.Lon
-	if err := validateCoords(lat, lon); err != nil {
-		return GetQibla400JSONResponse{BadRequestJSONResponse(newError("invalid_coordinates", err.Error()))}, nil
-	}
-	return GetQibla200JSONResponse{
-		Direction:  qibla.Direction(lat, lon),
-		DistanceKm: qibla.Distance(lat, lon),
-	}, nil
-}
-
-func validateCoords(lat, lon float64) error {
-	if lat < -90 || lat > 90 {
-		return fmt.Errorf("lat must be between -90 and 90")
-	}
-	if lon < -180 || lon > 180 {
-		return fmt.Errorf("lon must be between -180 and 180")
-	}
-	return nil
-}
-
-func newError(code, msg string) Error {
-	return Error{Error: ErrorBody{Code: code, Message: msg}}
+	return nil, errNotImplemented
 }

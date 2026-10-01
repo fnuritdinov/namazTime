@@ -108,12 +108,18 @@ func run(log *slog.Logger) error {
 		ErrorHandlerFunc: handler.RequestErrorHandler,
 	})
 
+	handler.HandlerWithOptions(strictHandler, handler.StdHTTPServerOptions{
+		BaseURL:          "/v1",
+		BaseRouter:       mux,
+		ErrorHandlerFunc: handler.RequestErrorHandler,
+	})
+
 	srv := &http.Server{
 		Addr:              ":" + cfg.HTTPPort,
-		Handler:           mux,
+		Handler:           handler.RequestID(mux),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
-
+	
 	errCh := make(chan error, 1)
 	go func() {
 		log.Info("http server started", "port", cfg.HTTPPort)

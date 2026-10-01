@@ -1,81 +1,283 @@
 openapi: 3.0.3
 info:
-  title: nTime API
+  title: Namoz API
   version: 1.0.0
-  description: Время намаза и направление киблы
+  description: |
+    Бэкенд приложения Namoz. Составлено по Backend-API.md (техническое задание).
+    Часть 1: конфигурация, города, методы расчёта, время намазов.
+
+    Общие правила (§2 ТЗ):
+    - Имена полей — camelCase.
+    - Даты — YYYY-MM-DD, моменты времени — ISO 8601 со смещением города.
+    - Часовые пояса — IANA (Asia/Dushanbe).
+    - Язык UI-текстов — заголовок Accept-Language (фолбэк en).
+    - Контент кэшируется: Cache-Control + ETag, If-None-Match → 304 (реализуется middleware).
+    - Координаты не логируются и не сохраняются (§16).
 
 servers:
-  - url: http://localhost:8080
+  - url: https://api.namoz.tj/v1
+  - url: http://localhost:8080/v1
+
+tags:
+  - name: config
+  - name: cities
+  - name: prayer
 
 paths:
-  /api/v1/prayer-times:
+  /config:
     get:
-      operationId: getPrayerTimes
-      summary: Время намаза по координатам
+      tags: [config]
+      operationId: getConfig
+      summary: Минимальная версия приложения, флаги, версии контента
+      responses:
+        "200":
+          description: Конфигурация
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Config"
+        "500":
+          $ref: "#/components/responses/Internal"
+
+  /cities:
+    get:
+      tags: [cities]
+      operationId: listCities
+      summary: Поиск и список городов
+      description: |
+        Поиск по названию на всех языках (tg/ru/en/ar + транслитерация).
+        Без query — популярные города страны.
       parameters:
-        - $ref: "#/components/parameters/Lat"
-        - $ref: "#/components/parameters/Lon"
-        - name: date
+        - name: query
           in: query
           required: false
-          description: Дата в формате YYYY-MM-DD. По умолчанию — сегодня.
+          description: Строка поиска («Худж», «Хуҷанд», «Khujand»)
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 100
+        - $ref: "#/components/parameters/CountryQuery"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/AcceptLanguage"
+      responses:
+        "200":
+          description: Список городов
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CityList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/Internal"
+
+  /cities/nearest:
+    get:
+      tags: [cities]
+      operationId: getNearestCity
+      summary: Ближайший город по координатам
+      description: Координаты не логировать и не сохранять (§16 ТЗ).
+      parameters:
+        - $ref: "#/components/parameters/LatQuery"
+        - $ref: "#/components/parameters/LonQuery"
+        - $ref: "#/components/parameters/AcceptLanguage"
+      responses:
+        "200":
+          description: Ближайший город
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NearestCity"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/Internal"
+
+  /cities/{cityId}:
+    get:
+      tags: [cities]
+      operationId: getCity
+      summary: Один город
+      parameters:
+        - $ref: "#/components/parameters/CityIdPath"
+        - $ref: "#/components/parameters/AcceptLanguage"
+      responses:
+        "200":
+          description: Город
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/City"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/Internal"
+
+  /calculation-methods:
+    get:
+      tags: [prayer]
+      operationId: listCalculationMethods
+      summary: Методы расчёта времени намазов
+      responses:
+        "200":
+          description: Методы расчёта
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CalculationMethodList"
+        "500":
+          $ref: "#/components/responses/Internal"
+
+  /prayer-times:
+    get:
+      tags: [prayer]
+      operationId: getPrayerTimes
+      summary: Расписание намазов на диапазон дат
+      description: |
+        Город задаётся через cityId ИЛИ lat + lon + timeZoneId.
+        Диапазон from..to — не больше 62 дней.
+        source=auto: официальное расписание, если есть, иначе расчёт.
+        422 unsupported — если source=official, а официальной таблицы нет.
+      parameters:
+        - name: cityId
+          in: query
+          required: false
+          description: Идентификатор города. Обязателен, если не переданы lat/lon/timeZoneId.
+          schema:
+            type: string
+            example: dushanbe
+        - name: lat
+          in: query
+          required: false
+          schema:
+            type: number
+            format: double
+            minimum: -90
+            maximum: 90
+        - name: lon
+          in: query
+          required: false
+          schema:
+            type: number
+            format: double
+            minimum: -180
+            maximum: 180
+        - name: timeZoneId
+          in: query
+          required: false
+          description: IANA часовой пояс, обязателен вместе с lat/lon
+          schema:
+            type: string
+            example: Asia/Dushanbe
+        - name: from
+          in: query
+          required: true
           schema:
             type: string
             format: date
-        - name: school
+            example: "2026-09-30"
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+            example: "2026-10-30"
+        - name: method
           in: query
           required: false
-          description: "Мазхаб для времени Аср: 0 — шафиитский, 1 — ханафитский"
+          description: По умолчанию — suggestedMethod города
           schema:
-            type: integer
-            enum: [0, 1]
-            default: 1
+            $ref: "#/components/schemas/CalculationMethodId"
+        - name: madhab
+          in: query
+          required: false
+          description: По умолчанию — suggestedMadhab города
+          schema:
+            $ref: "#/components/schemas/Madhab"
+        - name: source
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/PrayerSourceParam"
       responses:
         "200":
-          description: Время намаза
+          description: Расписание
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/PrayerTimesResponse"
         "400":
           $ref: "#/components/responses/BadRequest"
-        "502":
-          $ref: "#/components/responses/BadGateway"
-
-  /api/v1/qibla:
-    get:
-      operationId: getQibla
-      summary: Направление на Каабу
-      parameters:
-        - $ref: "#/components/parameters/Lat"
-        - $ref: "#/components/parameters/Lon"
-      responses:
-        "200":
-          description: Направление киблы
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/QiblaResponse"
-        "400":
-          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/Unsupported"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/Internal"
 
 components:
   parameters:
-    Lat:
+    AcceptLanguage:
+      name: Accept-Language
+      in: header
+      required: false
+      description: Язык UI-текстов (tg, ru, en, ar). Фолбэк — en.
+      schema:
+        type: string
+        example: ru
+    CountryQuery:
+      name: country
+      in: query
+      required: false
+      description: Код страны ISO 3166-1 alpha-2
+      schema:
+        type: string
+        pattern: "^[A-Z]{2}$"
+        example: TJ
+    Limit:
+      name: limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 200
+        default: 50
+    Cursor:
+      name: cursor
+      in: query
+      required: false
+      description: Непрозрачный курсор из nextCursor предыдущего ответа
+      schema:
+        type: string
+    CityIdPath:
+      name: cityId
+      in: path
+      required: true
+      schema:
+        type: string
+        example: dushanbe
+    LatQuery:
       name: lat
       in: query
       required: true
-      description: Широта
       schema:
         type: number
         format: double
         minimum: -90
         maximum: 90
-    Lon:
+    LonQuery:
       name: lon
       in: query
       required: true
-      description: Долгота
       schema:
         type: number
         format: double
@@ -83,100 +285,345 @@ components:
         maximum: 180
 
   schemas:
-    Location:
+    # ---------- Общие ----------
+    LocalizedString:
       type: object
-      required: [lat, lon, country]
+      description: Локализуемая строка. Ключи — коды языков.
       properties:
-        lat:
+        en:
+          type: string
+        ru:
+          type: string
+        tg:
+          type: string
+        ar:
+          type: string
+      example:
+        en: Khujand
+        ru: Худжанд
+        tg: Хуҷанд
+        ar: خجند
+
+    Coordinate:
+      type: object
+      required: [latitude, longitude]
+      properties:
+        latitude:
           type: number
           format: double
-          example: 38.56
-        lon:
+          example: 40.2826
+        longitude:
           type: number
           format: double
-          example: 68.77
+          example: 69.6222
+
+    # ---------- Конфигурация ----------
+    Config:
+      type: object
+      required: [minSupportedVersion, latestVersion, features, contentVersions, supportUrl]
+      properties:
+        minSupportedVersion:
+          type: string
+          example: 1.0.0
+        latestVersion:
+          type: string
+          example: 1.0.3
+        features:
+          $ref: "#/components/schemas/Features"
+        contentVersions:
+          type: object
+          description: Версии контента (quran, quranEditions, hadith, cities)
+          additionalProperties:
+            type: integer
+          example:
+            quran: 3
+            quranEditions: 5
+            hadith: 2
+            cities: 7
+        ramadan:
+          $ref: "#/components/schemas/RamadanSummary"
+        supportUrl:
+          type: string
+          format: uri
+          example: https://namoz.tj/support
+
+    Features:
+      type: object
+      required: [sync, officialTimetables, quranSearch]
+      properties:
+        sync:
+          type: boolean
+        officialTimetables:
+          type: boolean
+        quranSearch:
+          type: boolean
+
+    RamadanSummary:
+      type: object
+      nullable: true
+      required: [status, hijriYear, startDate]
+      properties:
+        status:
+          $ref: "#/components/schemas/ConfirmationStatus"
+        hijriYear:
+          type: integer
+          example: 1448
+        startDate:
+          type: string
+          format: date
+          example: "2027-02-08"
+
+    ConfirmationStatus:
+      type: string
+      enum: [expected, confirmed]
+
+    # ---------- Города ----------
+    City:
+      type: object
+      required:
+        - id
+        - name
+        - country
+        - coordinate
+        - timeZoneId
+        - suggestedMethod
+        - suggestedMadhab
+        - hasOfficialTimetable
+      properties:
+        id:
+          type: string
+          example: khujand
+        name:
+          $ref: "#/components/schemas/LocalizedString"
+        region:
+          $ref: "#/components/schemas/LocalizedString"
         country:
           type: string
-          description: Код страны ISO 3166-1 alpha-2
+          pattern: "^[A-Z]{2}$"
           example: TJ
-        city:
+        coordinate:
+          $ref: "#/components/schemas/Coordinate"
+        timeZoneId:
           type: string
-          example: Душанбе
+          example: Asia/Dushanbe
+        suggestedMethod:
+          $ref: "#/components/schemas/CalculationMethodId"
+        suggestedMadhab:
+          $ref: "#/components/schemas/Madhab"
+        hasOfficialTimetable:
+          type: boolean
+        population:
+          type: integer
+          nullable: true
+          example: 183000
 
-    PrayerTime:
+    NearestCity:
+      allOf:
+        - $ref: "#/components/schemas/City"
+        - type: object
+          required: [distanceKm]
+          properties:
+            distanceKm:
+              type: number
+              format: double
+              example: 2.4
+
+    CityList:
       type: object
-      required: [start]
+      required: [items, nextCursor]
       properties:
-        start:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/City"
+        nextCursor:
           type: string
-          description: Время начала, HH:MM
-          example: "04:50"
-        end:
-          type: string
-          description: Время окончания, HH:MM (есть не у всех источников)
-          example: "06:10"
+          nullable: true
 
-    Timings:
+    # ---------- Методы расчёта ----------
+    CalculationMethodId:
+      type: string
+      description: Идентификаторы строго совпадают с CalculationMethod в iOS
+      enum:
+        - muslimWorldLeague
+        - northAmerica
+        - egypt
+        - ummAlQura
+        - karachi
+        - turkey
+
+    Madhab:
+      type: string
+      enum: [hanafi, shafii]
+
+    IshaRule:
       type: object
+      required: [type, value]
+      properties:
+        type:
+          type: string
+          enum: [angle, minutesAfterMaghrib]
+        value:
+          type: number
+          format: double
+          example: 17
+
+    CalculationMethod:
+      type: object
+      required: [id, title, fajrAngle, isha]
+      properties:
+        id:
+          $ref: "#/components/schemas/CalculationMethodId"
+        title:
+          $ref: "#/components/schemas/LocalizedString"
+        fajrAngle:
+          type: number
+          format: double
+          example: 18
+        isha:
+          $ref: "#/components/schemas/IshaRule"
+
+    CalculationMethodList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CalculationMethod"
+
+    # ---------- Время намазов ----------
+    PrayerSourceParam:
+      type: string
+      enum: [auto, official, calculated]
+      default: auto
+
+    PrayerSource:
+      type: string
+      enum: [official, calculated]
+
+    HijriDate:
+      type: object
+      required: [day, month, year]
+      properties:
+        day:
+          type: integer
+          example: 18
+        month:
+          type: integer
+          example: 4
+        year:
+          type: integer
+          example: 1448
+        monthName:
+          $ref: "#/components/schemas/LocalizedString"
+
+    PrayerTimes:
+      type: object
+      description: Моменты времени в ISO 8601 со смещением часового пояса города
       required: [fajr, sunrise, dhuhr, asr, maghrib, isha]
       properties:
         fajr:
-          $ref: "#/components/schemas/PrayerTime"
+          type: string
+          format: date-time
+          example: "2026-09-30T04:51:00+05:00"
         sunrise:
-          $ref: "#/components/schemas/PrayerTime"
+          type: string
+          format: date-time
+          example: "2026-09-30T06:20:00+05:00"
         dhuhr:
-          $ref: "#/components/schemas/PrayerTime"
+          type: string
+          format: date-time
+          example: "2026-09-30T12:17:00+05:00"
         asr:
-          $ref: "#/components/schemas/PrayerTime"
+          type: string
+          format: date-time
+          example: "2026-09-30T16:26:00+05:00"
         maghrib:
-          $ref: "#/components/schemas/PrayerTime"
+          type: string
+          format: date-time
+          example: "2026-09-30T18:11:00+05:00"
         isha:
-          $ref: "#/components/schemas/PrayerTime"
+          type: string
+          format: date-time
+          example: "2026-09-30T19:33:00+05:00"
 
-    PrayerTimesResponse:
+    PrayerDay:
       type: object
-      required: [date, location, source, timings]
+      required: [date, hijri, times]
       properties:
         date:
           type: string
           format: date
           example: "2026-09-30"
-        hijri_date:
+        hijri:
+          $ref: "#/components/schemas/HijriDate"
+        times:
+          $ref: "#/components/schemas/PrayerTimes"
+        imsak:
           type: string
-          example: "18-04-1448"
-        location:
-          $ref: "#/components/schemas/Location"
-        source:
-          type: string
-          description: Откуда взяты данные
-          enum: [aladhan, shuroiulamo]
-        timings:
-          $ref: "#/components/schemas/Timings"
+          format: date-time
+          example: "2026-09-30T04:41:00+05:00"
 
-    QiblaResponse:
+    PrayerTimesResponse:
       type: object
-      required: [direction, distance_km]
+      required: [timeZoneId, method, madhab, source, days]
       properties:
-        direction:
-          type: number
-          format: double
-          description: Азимут на Каабу в градусах от истинного севера (0–360)
-          example: 240.3
-        distance_km:
-          type: number
-          format: double
-          example: 3420.5
+        cityId:
+          type: string
+          nullable: true
+          description: null, если запрос был по координатам
+          example: dushanbe
+        timeZoneId:
+          type: string
+          example: Asia/Dushanbe
+        method:
+          $ref: "#/components/schemas/CalculationMethodId"
+        madhab:
+          $ref: "#/components/schemas/Madhab"
+        source:
+          $ref: "#/components/schemas/PrayerSource"
+        sourceName:
+          $ref: "#/components/schemas/LocalizedString"
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2026-09-01T00:00:00Z"
+        days:
+          type: array
+          items:
+            $ref: "#/components/schemas/PrayerDay"
+
+    # ---------- Ошибки ----------
+    ErrorCode:
+      type: string
+      enum:
+        - invalid_argument
+        - unauthorized
+        - not_found
+        - conflict
+        - unsupported
+        - rate_limited
+        - internal
 
     ErrorBody:
       type: object
-      required: [code, message]
+      required: [code, message, requestId]
       properties:
         code:
-          type: string
-          example: invalid_coordinates
+          $ref: "#/components/schemas/ErrorCode"
         message:
           type: string
-          example: lat must be between -90 and 90
+          example: Surah 115 does not exist
+        details:
+          type: object
+          additionalProperties: true
+          example:
+            field: surah
+        requestId:
+          type: string
+          example: 01J9ZK3M5Q8T2V4X6Y8Z0A1B2C
 
     Error:
       type: object
@@ -185,15 +632,42 @@ components:
         error:
           $ref: "#/components/schemas/ErrorBody"
 
+  headers:
+    RetryAfter:
+      description: Через сколько секунд можно повторить запрос
+      schema:
+        type: integer
+
   responses:
     BadRequest:
-      description: Неверные параметры запроса
+      description: Неверный параметр (invalid_argument)
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/Error"
-    BadGateway:
-      description: Внешний источник данных недоступен
+    NotFound:
+      description: Ресурс не найден (not_found)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Unsupported:
+      description: Операция не поддерживается, например нет официального расписания (unsupported)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    RateLimited:
+      description: Превышен лимит запросов (rate_limited)
+      headers:
+        Retry-After:
+          $ref: "#/components/headers/RetryAfter"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Internal:
+      description: Ошибка сервера (internal)
       content:
         application/json:
           schema:

@@ -17,46 +17,259 @@ import (
 	"net/url"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/oapi-codegen/runtime"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
-// Defines values for PrayerTimesResponseSource.
+// Defines values for CalculationMethodId.
 const (
-	Aladhan     PrayerTimesResponseSource = "aladhan"
-	Shuroiulamo PrayerTimesResponseSource = "shuroiulamo"
+	Egypt             CalculationMethodId = "egypt"
+	Karachi           CalculationMethodId = "karachi"
+	MuslimWorldLeague CalculationMethodId = "muslimWorldLeague"
+	NorthAmerica      CalculationMethodId = "northAmerica"
+	Turkey            CalculationMethodId = "turkey"
+	UmmAlQura         CalculationMethodId = "ummAlQura"
 )
 
-// Valid indicates whether the value is a known member of the PrayerTimesResponseSource enum.
-func (e PrayerTimesResponseSource) Valid() bool {
+// Valid indicates whether the value is a known member of the CalculationMethodId enum.
+func (e CalculationMethodId) Valid() bool {
 	switch e {
-	case Aladhan:
+	case Egypt:
 		return true
-	case Shuroiulamo:
+	case Karachi:
+		return true
+	case MuslimWorldLeague:
+		return true
+	case NorthAmerica:
+		return true
+	case Turkey:
+		return true
+	case UmmAlQura:
 		return true
 	default:
 		return false
 	}
 }
 
-// Defines values for GetPrayerTimesParamsSchool.
+// Defines values for ConfirmationStatus.
 const (
-	N0 GetPrayerTimesParamsSchool = 0
-	N1 GetPrayerTimesParamsSchool = 1
+	Confirmed ConfirmationStatus = "confirmed"
+	Expected  ConfirmationStatus = "expected"
 )
 
-// Valid indicates whether the value is a known member of the GetPrayerTimesParamsSchool enum.
-func (e GetPrayerTimesParamsSchool) Valid() bool {
+// Valid indicates whether the value is a known member of the ConfirmationStatus enum.
+func (e ConfirmationStatus) Valid() bool {
 	switch e {
-	case N0:
+	case Confirmed:
 		return true
-	case N1:
+	case Expected:
 		return true
 	default:
 		return false
 	}
+}
+
+// Defines values for ErrorCode.
+const (
+	ErrorCodeConflict        ErrorCode = "conflict"
+	ErrorCodeInternal        ErrorCode = "internal"
+	ErrorCodeInvalidArgument ErrorCode = "invalid_argument"
+	ErrorCodeNotFound        ErrorCode = "not_found"
+	ErrorCodeRateLimited     ErrorCode = "rate_limited"
+	ErrorCodeUnauthorized    ErrorCode = "unauthorized"
+	ErrorCodeUnsupported     ErrorCode = "unsupported"
+)
+
+// Valid indicates whether the value is a known member of the ErrorCode enum.
+func (e ErrorCode) Valid() bool {
+	switch e {
+	case ErrorCodeConflict:
+		return true
+	case ErrorCodeInternal:
+		return true
+	case ErrorCodeInvalidArgument:
+		return true
+	case ErrorCodeNotFound:
+		return true
+	case ErrorCodeRateLimited:
+		return true
+	case ErrorCodeUnauthorized:
+		return true
+	case ErrorCodeUnsupported:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for IshaRuleType.
+const (
+	Angle               IshaRuleType = "angle"
+	MinutesAfterMaghrib IshaRuleType = "minutesAfterMaghrib"
+)
+
+// Valid indicates whether the value is a known member of the IshaRuleType enum.
+func (e IshaRuleType) Valid() bool {
+	switch e {
+	case Angle:
+		return true
+	case MinutesAfterMaghrib:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for Madhab.
+const (
+	Hanafi Madhab = "hanafi"
+	Shafii Madhab = "shafii"
+)
+
+// Valid indicates whether the value is a known member of the Madhab enum.
+func (e Madhab) Valid() bool {
+	switch e {
+	case Hanafi:
+		return true
+	case Shafii:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PrayerSource.
+const (
+	PrayerSourceCalculated PrayerSource = "calculated"
+	PrayerSourceOfficial   PrayerSource = "official"
+)
+
+// Valid indicates whether the value is a known member of the PrayerSource enum.
+func (e PrayerSource) Valid() bool {
+	switch e {
+	case PrayerSourceCalculated:
+		return true
+	case PrayerSourceOfficial:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PrayerSourceParam.
+const (
+	PrayerSourceParamAuto       PrayerSourceParam = "auto"
+	PrayerSourceParamCalculated PrayerSourceParam = "calculated"
+	PrayerSourceParamOfficial   PrayerSourceParam = "official"
+)
+
+// Valid indicates whether the value is a known member of the PrayerSourceParam enum.
+func (e PrayerSourceParam) Valid() bool {
+	switch e {
+	case PrayerSourceParamAuto:
+		return true
+	case PrayerSourceParamCalculated:
+		return true
+	case PrayerSourceParamOfficial:
+		return true
+	default:
+		return false
+	}
+}
+
+// CalculationMethod defines model for CalculationMethod.
+type CalculationMethod struct {
+	// FajrAngle Example: 18
+	FajrAngle float64 `json:"fajrAngle"`
+
+	// Id Идентификаторы строго совпадают с CalculationMethod в iOS
+	Id   CalculationMethodId `json:"id"`
+	Isha IshaRule            `json:"isha"`
+
+	// Title Локализуемая строка. Ключи — коды языков.
+	//
+	// Example: {"ar":"خجند","en":"Khujand","ru":"Худжанд","tg":"Хуҷанд"}
+	Title LocalizedString `json:"title"`
+}
+
+// CalculationMethodId Идентификаторы строго совпадают с CalculationMethod в iOS
+type CalculationMethodId string
+
+// CalculationMethodList defines model for CalculationMethodList.
+type CalculationMethodList struct {
+	Items []CalculationMethod `json:"items"`
+}
+
+// City defines model for City.
+type City struct {
+	Coordinate Coordinate `json:"coordinate"`
+
+	// Country Example: TJ
+	Country              string `json:"country"`
+	HasOfficialTimetable bool   `json:"hasOfficialTimetable"`
+
+	// Id Example: khujand
+	Id string `json:"id"`
+
+	// Name Локализуемая строка. Ключи — коды языков.
+	//
+	// Example: {"ar":"خجند","en":"Khujand","ru":"Худжанд","tg":"Хуҷанд"}
+	Name LocalizedString `json:"name"`
+
+	// Population Example: 183000
+	Population *int `json:"population,omitempty"`
+
+	// Region Локализуемая строка. Ключи — коды языков.
+	//
+	// Example: {"ar":"خجند","en":"Khujand","ru":"Худжанд","tg":"Хуҷанд"}
+	Region          *LocalizedString `json:"region,omitempty"`
+	SuggestedMadhab Madhab           `json:"suggestedMadhab"`
+
+	// SuggestedMethod Идентификаторы строго совпадают с CalculationMethod в iOS
+	SuggestedMethod CalculationMethodId `json:"suggestedMethod"`
+
+	// TimeZoneId Example: Asia/Dushanbe
+	TimeZoneId string `json:"timeZoneId"`
+}
+
+// CityList defines model for CityList.
+type CityList struct {
+	Items      []City  `json:"items"`
+	NextCursor *string `json:"nextCursor"`
+}
+
+// Config defines model for Config.
+type Config struct {
+	// ContentVersions Версии контента (quran, quranEditions, hadith, cities)
+	//
+	// Example: {"cities":7,"hadith":2,"quran":3,"quranEditions":5}
+	ContentVersions map[string]int `json:"contentVersions"`
+	Features        Features       `json:"features"`
+
+	// LatestVersion Example: 1.0.3
+	LatestVersion string `json:"latestVersion"`
+
+	// MinSupportedVersion Example: 1.0.0
+	MinSupportedVersion string          `json:"minSupportedVersion"`
+	Ramadan             *RamadanSummary `json:"ramadan,omitempty"`
+
+	// SupportUrl Example: https://namoz.tj/support
+	SupportUrl string `json:"supportUrl"`
+}
+
+// ConfirmationStatus defines model for ConfirmationStatus.
+type ConfirmationStatus string
+
+// Coordinate defines model for Coordinate.
+type Coordinate struct {
+	// Latitude Example: 40.2826
+	Latitude float64 `json:"latitude"`
+
+	// Longitude Example: 69.6222
+	Longitude float64 `json:"longitude"`
 }
 
 // Error defines model for Error.
@@ -66,128 +279,286 @@ type Error struct {
 
 // ErrorBody defines model for ErrorBody.
 type ErrorBody struct {
-	// Code Example: invalid_coordinates
-	Code string `json:"code"`
+	Code ErrorCode `json:"code"`
 
-	// Message Example: lat must be between -90 and 90
+	// Details Example: {"field":"surah"}
+	Details *map[string]interface{} `json:"details,omitempty"`
+
+	// Message Example: Surah 115 does not exist
 	Message string `json:"message"`
+
+	// RequestId Example: 01J9ZK3M5Q8T2V4X6Y8Z0A1B2C
+	RequestId string `json:"requestId"`
 }
 
-// Location defines model for Location.
-type Location struct {
-	// City Example: Душанбе
-	City *string `json:"city,omitempty"`
+// ErrorCode defines model for ErrorCode.
+type ErrorCode string
 
-	// Country Код страны ISO 3166-1 alpha-2
+// Features defines model for Features.
+type Features struct {
+	OfficialTimetables bool `json:"officialTimetables"`
+	QuranSearch        bool `json:"quranSearch"`
+	Sync               bool `json:"sync"`
+}
+
+// HijriDate defines model for HijriDate.
+type HijriDate struct {
+	// Day Example: 18
+	Day int `json:"day"`
+
+	// Month Example: 4
+	Month int `json:"month"`
+
+	// MonthName Локализуемая строка. Ключи — коды языков.
 	//
-	// Example: TJ
+	// Example: {"ar":"خجند","en":"Khujand","ru":"Худжанд","tg":"Хуҷанд"}
+	MonthName *LocalizedString `json:"monthName,omitempty"`
+
+	// Year Example: 1448
+	Year int `json:"year"`
+}
+
+// IshaRule defines model for IshaRule.
+type IshaRule struct {
+	Type IshaRuleType `json:"type"`
+
+	// Value Example: 17
+	Value float64 `json:"value"`
+}
+
+// IshaRuleType defines model for IshaRule.Type.
+type IshaRuleType string
+
+// LocalizedString Локализуемая строка. Ключи — коды языков.
+//
+// Example: {"ar":"خجند","en":"Khujand","ru":"Худжанд","tg":"Хуҷанд"}
+type LocalizedString struct {
+	Ar *string `json:"ar,omitempty"`
+	En *string `json:"en,omitempty"`
+	Ru *string `json:"ru,omitempty"`
+	Tg *string `json:"tg,omitempty"`
+}
+
+// Madhab defines model for Madhab.
+type Madhab string
+
+// NearestCity defines model for NearestCity.
+type NearestCity struct {
+	Coordinate Coordinate `json:"coordinate"`
+
+	// Country Example: TJ
 	Country string `json:"country"`
 
-	// Lat Example: 38.56
-	Lat float64 `json:"lat"`
+	// DistanceKm Example: 2.4
+	DistanceKm           float64 `json:"distanceKm"`
+	HasOfficialTimetable bool    `json:"hasOfficialTimetable"`
 
-	// Lon Example: 68.77
-	Lon float64 `json:"lon"`
+	// Id Example: khujand
+	Id string `json:"id"`
+
+	// Name Локализуемая строка. Ключи — коды языков.
+	//
+	// Example: {"ar":"خجند","en":"Khujand","ru":"Худжанд","tg":"Хуҷанд"}
+	Name LocalizedString `json:"name"`
+
+	// Population Example: 183000
+	Population *int `json:"population,omitempty"`
+
+	// Region Локализуемая строка. Ключи — коды языков.
+	//
+	// Example: {"ar":"خجند","en":"Khujand","ru":"Худжанд","tg":"Хуҷанд"}
+	Region          *LocalizedString `json:"region,omitempty"`
+	SuggestedMadhab Madhab           `json:"suggestedMadhab"`
+
+	// SuggestedMethod Идентификаторы строго совпадают с CalculationMethod в iOS
+	SuggestedMethod CalculationMethodId `json:"suggestedMethod"`
+
+	// TimeZoneId Example: Asia/Dushanbe
+	TimeZoneId string `json:"timeZoneId"`
 }
 
-// PrayerTime defines model for PrayerTime.
-type PrayerTime struct {
-	// End Время окончания, HH:MM (есть не у всех источников)
-	//
-	// Example: 06:10
-	End *string `json:"end,omitempty"`
+// PrayerDay defines model for PrayerDay.
+type PrayerDay struct {
+	// Date Example: 2026-09-30
+	Date  openapi_types.Date `json:"date"`
+	Hijri HijriDate          `json:"hijri"`
 
-	// Start Время начала, HH:MM
-	//
-	// Example: 04:50
-	Start string `json:"start"`
+	// Imsak Example: 2026-09-30T04:41:00+05:00
+	Imsak *time.Time `json:"imsak,omitempty"`
+
+	// Times Моменты времени в ISO 8601 со смещением часового пояса города
+	Times PrayerTimes `json:"times"`
+}
+
+// PrayerSource defines model for PrayerSource.
+type PrayerSource string
+
+// PrayerSourceParam defines model for PrayerSourceParam.
+type PrayerSourceParam string
+
+// PrayerTimes Моменты времени в ISO 8601 со смещением часового пояса города
+type PrayerTimes struct {
+	// Asr Example: 2026-09-30T16:26:00+05:00
+	Asr time.Time `json:"asr"`
+
+	// Dhuhr Example: 2026-09-30T12:17:00+05:00
+	Dhuhr time.Time `json:"dhuhr"`
+
+	// Fajr Example: 2026-09-30T04:51:00+05:00
+	Fajr time.Time `json:"fajr"`
+
+	// Isha Example: 2026-09-30T19:33:00+05:00
+	Isha time.Time `json:"isha"`
+
+	// Maghrib Example: 2026-09-30T18:11:00+05:00
+	Maghrib time.Time `json:"maghrib"`
+
+	// Sunrise Example: 2026-09-30T06:20:00+05:00
+	Sunrise time.Time `json:"sunrise"`
 }
 
 // PrayerTimesResponse defines model for PrayerTimesResponse.
 type PrayerTimesResponse struct {
-	// Date Example: 2026-09-30
-	Date openapi_types.Date `json:"date"`
-
-	// HijriDate Example: 18-04-1448
-	HijriDate *string  `json:"hijri_date,omitempty"`
-	Location  Location `json:"location"`
-
-	// Source Откуда взяты данные
-	Source  PrayerTimesResponseSource `json:"source"`
-	Timings Timings                   `json:"timings"`
-}
-
-// PrayerTimesResponseSource Откуда взяты данные
-type PrayerTimesResponseSource string
-
-// QiblaResponse defines model for QiblaResponse.
-type QiblaResponse struct {
-	// Direction Азимут на Каабу в градусах от истинного севера (0–360)
+	// CityId null, если запрос был по координатам
 	//
-	// Example: 240.3
-	Direction float64 `json:"direction"`
+	// Example: dushanbe
+	CityId *string     `json:"cityId,omitempty"`
+	Days   []PrayerDay `json:"days"`
+	Madhab Madhab      `json:"madhab"`
 
-	// DistanceKm Example: 3420.5
-	DistanceKm float64 `json:"distance_km"`
+	// Method Идентификаторы строго совпадают с CalculationMethod в iOS
+	Method CalculationMethodId `json:"method"`
+	Source PrayerSource        `json:"source"`
+
+	// SourceName Локализуемая строка. Ключи — коды языков.
+	//
+	// Example: {"ar":"خجند","en":"Khujand","ru":"Худжанд","tg":"Хуҷанд"}
+	SourceName *LocalizedString `json:"sourceName,omitempty"`
+
+	// TimeZoneId Example: Asia/Dushanbe
+	TimeZoneId string `json:"timeZoneId"`
+
+	// UpdatedAt Example: 2026-09-01T00:00:00Z
+	UpdatedAt *time.Time `json:"updatedAt,omitempty"`
 }
 
-// Timings defines model for Timings.
-type Timings struct {
-	Asr     PrayerTime `json:"asr"`
-	Dhuhr   PrayerTime `json:"dhuhr"`
-	Fajr    PrayerTime `json:"fajr"`
-	Isha    PrayerTime `json:"isha"`
-	Maghrib PrayerTime `json:"maghrib"`
-	Sunrise PrayerTime `json:"sunrise"`
+// RamadanSummary defines model for RamadanSummary.
+type RamadanSummary struct {
+	// HijriYear Example: 1448
+	HijriYear int `json:"hijriYear"`
+
+	// StartDate Example: 2027-02-08
+	StartDate openapi_types.Date `json:"startDate"`
+	Status    ConfirmationStatus `json:"status"`
 }
 
-// Lat defines model for Lat.
-type Lat = float64
+// AcceptLanguage Example: ru
+type AcceptLanguage = string
 
-// Lon defines model for Lon.
-type Lon = float64
+// CityIdPath Example: dushanbe
+type CityIdPath = string
 
-// BadGateway defines model for BadGateway.
-type BadGateway = Error
+// CountryQuery Example: TJ
+type CountryQuery = string
+
+// Cursor defines model for Cursor.
+type Cursor = string
+
+// LatQuery defines model for LatQuery.
+type LatQuery = float64
+
+// Limit defines model for Limit.
+type Limit = int
+
+// LonQuery defines model for LonQuery.
+type LonQuery = float64
 
 // BadRequest defines model for BadRequest.
 type BadRequest = Error
 
-// GetPrayerTimesParams defines parameters for GetPrayerTimes.
-type GetPrayerTimesParams struct {
-	// Lat Широта
-	Lat Lat `form:"lat" json:"lat"`
+// Internal defines model for Internal.
+type Internal = Error
 
-	// Lon Долгота
-	Lon Lon `form:"lon" json:"lon"`
+// NotFound defines model for NotFound.
+type NotFound = Error
 
-	// Date Дата в формате YYYY-MM-DD. По умолчанию — сегодня.
-	Date *openapi_types.Date `form:"date,omitempty" json:"date,omitempty"`
+// RateLimited defines model for RateLimited.
+type RateLimited = Error
 
-	// School Мазхаб для времени Аср: 0 — шафиитский, 1 — ханафитский
-	School *GetPrayerTimesParamsSchool `form:"school,omitempty" json:"school,omitempty"`
+// Unsupported defines model for Unsupported.
+type Unsupported = Error
+
+// ListCitiesParams defines parameters for ListCities.
+type ListCitiesParams struct {
+	// Query Строка поиска («Худж», «Хуҷанд», «Khujand»)
+	Query *string `form:"query,omitempty" json:"query,omitempty"`
+
+	// Country Код страны ISO 3166-1 alpha-2
+	Country *CountryQuery `form:"country,omitempty" json:"country,omitempty"`
+	Limit   *Limit        `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Cursor Непрозрачный курсор из nextCursor предыдущего ответа
+	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
+
+	// AcceptLanguage Язык UI-текстов (tg, ru, en, ar). Фолбэк — en.
+	AcceptLanguage *AcceptLanguage `json:"Accept-Language,omitempty"`
 }
 
-// GetPrayerTimesParamsSchool defines parameters for GetPrayerTimes.
-type GetPrayerTimesParamsSchool int
+// GetNearestCityParams defines parameters for GetNearestCity.
+type GetNearestCityParams struct {
+	Lat LatQuery `form:"lat" json:"lat"`
+	Lon LonQuery `form:"lon" json:"lon"`
 
-// GetQiblaParams defines parameters for GetQibla.
-type GetQiblaParams struct {
-	// Lat Широта
-	Lat Lat `form:"lat" json:"lat"`
+	// AcceptLanguage Язык UI-текстов (tg, ru, en, ar). Фолбэк — en.
+	AcceptLanguage *AcceptLanguage `json:"Accept-Language,omitempty"`
+}
 
-	// Lon Долгота
-	Lon Lon `form:"lon" json:"lon"`
+// GetCityParams defines parameters for GetCity.
+type GetCityParams struct {
+	// AcceptLanguage Язык UI-текстов (tg, ru, en, ar). Фолбэк — en.
+	AcceptLanguage *AcceptLanguage `json:"Accept-Language,omitempty"`
+}
+
+// GetPrayerTimesParams defines parameters for GetPrayerTimes.
+type GetPrayerTimesParams struct {
+	// CityId Идентификатор города. Обязателен, если не переданы lat/lon/timeZoneId.
+	CityId *string  `form:"cityId,omitempty" json:"cityId,omitempty"`
+	Lat    *float64 `form:"lat,omitempty" json:"lat,omitempty"`
+	Lon    *float64 `form:"lon,omitempty" json:"lon,omitempty"`
+
+	// TimeZoneId IANA часовой пояс, обязателен вместе с lat/lon
+	TimeZoneId *string            `form:"timeZoneId,omitempty" json:"timeZoneId,omitempty"`
+	From       openapi_types.Date `form:"from" json:"from"`
+	To         openapi_types.Date `form:"to" json:"to"`
+
+	// Method По умолчанию — suggestedMethod города
+	Method *CalculationMethodId `form:"method,omitempty" json:"method,omitempty"`
+
+	// Madhab По умолчанию — suggestedMadhab города
+	Madhab *Madhab            `form:"madhab,omitempty" json:"madhab,omitempty"`
+	Source *PrayerSourceParam `form:"source,omitempty" json:"source,omitempty"`
 }
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
-	// GetPrayerTimes Время намаза по координатам
-	// (GET /api/v1/prayer-times)
+	// ListCalculationMethods Методы расчёта времени намазов
+	// (GET /calculation-methods)
+	ListCalculationMethods(w http.ResponseWriter, r *http.Request)
+	// ListCities Поиск и список городов
+	// (GET /cities)
+	ListCities(w http.ResponseWriter, r *http.Request, params ListCitiesParams)
+	// GetNearestCity Ближайший город по координатам
+	// (GET /cities/nearest)
+	GetNearestCity(w http.ResponseWriter, r *http.Request, params GetNearestCityParams)
+	// GetCity Один город
+	// (GET /cities/{cityId})
+	GetCity(w http.ResponseWriter, r *http.Request, cityId CityIdPath, params GetCityParams)
+	// GetConfig Минимальная версия приложения, флаги, версии контента
+	// (GET /config)
+	GetConfig(w http.ResponseWriter, r *http.Request)
+	// GetPrayerTimes Расписание намазов на диапазон дат
+	// (GET /prayer-times)
 	GetPrayerTimes(w http.ResponseWriter, r *http.Request, params GetPrayerTimesParams)
-	// GetQibla Направление на Каабу
-	// (GET /api/v1/qibla)
-	GetQibla(w http.ResponseWriter, r *http.Request, params GetQiblaParams)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -199,69 +570,11 @@ type ServerInterfaceWrapper struct {
 
 type MiddlewareFunc func(http.Handler) http.Handler
 
-// GetPrayerTimes operation middleware
-func (siw *ServerInterfaceWrapper) GetPrayerTimes(w http.ResponseWriter, r *http.Request) {
-
-	var err error
-	_ = err
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params GetPrayerTimesParams
-
-	// ------------- Required query parameter "lat" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, true, "lat", r.URL.Query(), &params.Lat, runtime.BindQueryParameterOptions{Type: "number", Format: "double"})
-	if err != nil {
-		var requiredError *runtime.RequiredParameterError
-		if errors.As(err, &requiredError) {
-			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "lat"})
-		} else {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "lat", Err: err})
-		}
-		return
-	}
-
-	// ------------- Required query parameter "lon" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, true, "lon", r.URL.Query(), &params.Lon, runtime.BindQueryParameterOptions{Type: "number", Format: "double"})
-	if err != nil {
-		var requiredError *runtime.RequiredParameterError
-		if errors.As(err, &requiredError) {
-			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "lon"})
-		} else {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "lon", Err: err})
-		}
-		return
-	}
-
-	// ------------- Optional query parameter "date" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "date", r.URL.Query(), &params.Date, runtime.BindQueryParameterOptions{Type: "string", Format: "date"})
-	if err != nil {
-		var requiredError *runtime.RequiredParameterError
-		if errors.As(err, &requiredError) {
-			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "date"})
-		} else {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "date", Err: err})
-		}
-		return
-	}
-
-	// ------------- Optional query parameter "school" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "school", r.URL.Query(), &params.School, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
-	if err != nil {
-		var requiredError *runtime.RequiredParameterError
-		if errors.As(err, &requiredError) {
-			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "school"})
-		} else {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "school", Err: err})
-		}
-		return
-	}
+// ListCalculationMethods operation middleware
+func (siw *ServerInterfaceWrapper) ListCalculationMethods(w http.ResponseWriter, r *http.Request) {
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetPrayerTimes(w, r, params)
+		siw.Handler.ListCalculationMethods(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -271,14 +584,107 @@ func (siw *ServerInterfaceWrapper) GetPrayerTimes(w http.ResponseWriter, r *http
 	handler.ServeHTTP(w, r)
 }
 
-// GetQibla operation middleware
-func (siw *ServerInterfaceWrapper) GetQibla(w http.ResponseWriter, r *http.Request) {
+// ListCities operation middleware
+func (siw *ServerInterfaceWrapper) ListCities(w http.ResponseWriter, r *http.Request) {
 
 	var err error
 	_ = err
 
 	// Parameter object where we will unmarshal all parameters from the context
-	var params GetQiblaParams
+	var params ListCitiesParams
+
+	// ------------- Optional query parameter "query" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "query", r.URL.Query(), &params.Query, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "query"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "query", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "country" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "country", r.URL.Query(), &params.Country, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "country"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "country", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "cursor" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "cursor", r.URL.Query(), &params.Cursor, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "cursor"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "cursor", Err: err})
+		}
+		return
+	}
+
+	headers := r.Header
+
+	// ------------- Optional header parameter "Accept-Language" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Accept-Language")]; found {
+		var AcceptLanguage AcceptLanguage
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Accept-Language", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Accept-Language", valueList[0], &AcceptLanguage, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Accept-Language", Err: err})
+			return
+		}
+
+		params.AcceptLanguage = &AcceptLanguage
+
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListCities(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetNearestCity operation middleware
+func (siw *ServerInterfaceWrapper) GetNearestCity(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetNearestCityParams
 
 	// ------------- Required query parameter "lat" -------------
 
@@ -306,8 +712,230 @@ func (siw *ServerInterfaceWrapper) GetQibla(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	headers := r.Header
+
+	// ------------- Optional header parameter "Accept-Language" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Accept-Language")]; found {
+		var AcceptLanguage AcceptLanguage
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Accept-Language", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Accept-Language", valueList[0], &AcceptLanguage, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Accept-Language", Err: err})
+			return
+		}
+
+		params.AcceptLanguage = &AcceptLanguage
+
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetQibla(w, r, params)
+		siw.Handler.GetNearestCity(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetCity operation middleware
+func (siw *ServerInterfaceWrapper) GetCity(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "cityId" -------------
+	var cityId CityIdPath
+
+	err = runtime.BindStyledParameterWithOptions("simple", "cityId", r.PathValue("cityId"), &cityId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "cityId", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetCityParams
+
+	headers := r.Header
+
+	// ------------- Optional header parameter "Accept-Language" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Accept-Language")]; found {
+		var AcceptLanguage AcceptLanguage
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Accept-Language", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Accept-Language", valueList[0], &AcceptLanguage, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Accept-Language", Err: err})
+			return
+		}
+
+		params.AcceptLanguage = &AcceptLanguage
+
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetCity(w, r, cityId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetConfig operation middleware
+func (siw *ServerInterfaceWrapper) GetConfig(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetConfig(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetPrayerTimes operation middleware
+func (siw *ServerInterfaceWrapper) GetPrayerTimes(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetPrayerTimesParams
+
+	// ------------- Optional query parameter "cityId" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "cityId", r.URL.Query(), &params.CityId, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "cityId"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "cityId", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "lat" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "lat", r.URL.Query(), &params.Lat, runtime.BindQueryParameterOptions{Type: "number", Format: "double"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "lat"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "lat", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "lon" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "lon", r.URL.Query(), &params.Lon, runtime.BindQueryParameterOptions{Type: "number", Format: "double"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "lon"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "lon", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "timeZoneId" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "timeZoneId", r.URL.Query(), &params.TimeZoneId, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "timeZoneId"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "timeZoneId", Err: err})
+		}
+		return
+	}
+
+	// ------------- Required query parameter "from" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "from", r.URL.Query(), &params.From, runtime.BindQueryParameterOptions{Type: "string", Format: "date"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "from"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "from", Err: err})
+		}
+		return
+	}
+
+	// ------------- Required query parameter "to" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "to", r.URL.Query(), &params.To, runtime.BindQueryParameterOptions{Type: "string", Format: "date"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "to"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "to", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "method" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "method", r.URL.Query(), &params.Method, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "method"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "method", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "madhab" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "madhab", r.URL.Query(), &params.Madhab, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "madhab"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "madhab", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "source" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "source", r.URL.Query(), &params.Source, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "source"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "source", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetPrayerTimes(w, r, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -437,15 +1065,284 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 		ErrorHandlerFunc:   options.ErrorHandlerFunc,
 	}
 
-	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/prayer-times", wrapper.GetPrayerTimes)
-	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/qibla", wrapper.GetQibla)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/config", wrapper.GetConfig)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/cities", wrapper.ListCities)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/cities/nearest", wrapper.GetNearestCity)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/cities/{cityId}", wrapper.GetCity)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/calculation-methods", wrapper.ListCalculationMethods)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/prayer-times", wrapper.GetPrayerTimes)
 
 	return m
 }
 
-type BadGatewayJSONResponse Error
-
 type BadRequestJSONResponse Error
+
+type InternalJSONResponse Error
+
+type NotFoundJSONResponse Error
+
+type RateLimitedResponseHeaders struct {
+	RetryAfter *int
+}
+type RateLimitedJSONResponse struct {
+	Body Error
+
+	Headers RateLimitedResponseHeaders
+}
+
+type UnsupportedJSONResponse Error
+
+type ListCalculationMethodsRequestObject struct {
+}
+
+type ListCalculationMethodsResponseObject interface {
+	VisitListCalculationMethodsResponse(w http.ResponseWriter) error
+}
+
+type ListCalculationMethods200JSONResponse CalculationMethodList
+
+func (response ListCalculationMethods200JSONResponse) VisitListCalculationMethodsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListCalculationMethods500JSONResponse struct{ InternalJSONResponse }
+
+func (response ListCalculationMethods500JSONResponse) VisitListCalculationMethodsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListCitiesRequestObject struct {
+	Params ListCitiesParams
+}
+
+type ListCitiesResponseObject interface {
+	VisitListCitiesResponse(w http.ResponseWriter) error
+}
+
+type ListCities200JSONResponse CityList
+
+func (response ListCities200JSONResponse) VisitListCitiesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListCities400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response ListCities400JSONResponse) VisitListCitiesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListCities429JSONResponse struct{ RateLimitedJSONResponse }
+
+func (response ListCities429JSONResponse) VisitListCitiesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	w.WriteHeader(429)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListCities500JSONResponse struct{ InternalJSONResponse }
+
+func (response ListCities500JSONResponse) VisitListCitiesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetNearestCityRequestObject struct {
+	Params GetNearestCityParams
+}
+
+type GetNearestCityResponseObject interface {
+	VisitGetNearestCityResponse(w http.ResponseWriter) error
+}
+
+type GetNearestCity200JSONResponse NearestCity
+
+func (response GetNearestCity200JSONResponse) VisitGetNearestCityResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetNearestCity400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response GetNearestCity400JSONResponse) VisitGetNearestCityResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetNearestCity404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetNearestCity404JSONResponse) VisitGetNearestCityResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetNearestCity500JSONResponse struct{ InternalJSONResponse }
+
+func (response GetNearestCity500JSONResponse) VisitGetNearestCityResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCityRequestObject struct {
+	CityId CityIdPath `json:"cityId"`
+	Params GetCityParams
+}
+
+type GetCityResponseObject interface {
+	VisitGetCityResponse(w http.ResponseWriter) error
+}
+
+type GetCity200JSONResponse City
+
+func (response GetCity200JSONResponse) VisitGetCityResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCity404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetCity404JSONResponse) VisitGetCityResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCity500JSONResponse struct{ InternalJSONResponse }
+
+func (response GetCity500JSONResponse) VisitGetCityResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetConfigRequestObject struct {
+}
+
+type GetConfigResponseObject interface {
+	VisitGetConfigResponse(w http.ResponseWriter) error
+}
+
+type GetConfig200JSONResponse Config
+
+func (response GetConfig200JSONResponse) VisitGetConfigResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetConfig500JSONResponse struct{ InternalJSONResponse }
+
+func (response GetConfig500JSONResponse) VisitGetConfigResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
 
 type GetPrayerTimesRequestObject struct {
 	Params GetPrayerTimesParams
@@ -483,64 +1380,85 @@ func (response GetPrayerTimes400JSONResponse) VisitGetPrayerTimesResponse(w http
 	return err
 }
 
-type GetPrayerTimes502JSONResponse struct{ BadGatewayJSONResponse }
+type GetPrayerTimes404JSONResponse struct{ NotFoundJSONResponse }
 
-func (response GetPrayerTimes502JSONResponse) VisitGetPrayerTimesResponse(w http.ResponseWriter) error {
+func (response GetPrayerTimes404JSONResponse) VisitGetPrayerTimesResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(502)
+	w.WriteHeader(404)
 	_, err := buf.WriteTo(w)
 	return err
 }
 
-type GetQiblaRequestObject struct {
-	Params GetQiblaParams
-}
+type GetPrayerTimes422JSONResponse struct{ UnsupportedJSONResponse }
 
-type GetQiblaResponseObject interface {
-	VisitGetQiblaResponse(w http.ResponseWriter) error
-}
-
-type GetQibla200JSONResponse QiblaResponse
-
-func (response GetQibla200JSONResponse) VisitGetQiblaResponse(w http.ResponseWriter) error {
+func (response GetPrayerTimes422JSONResponse) VisitGetPrayerTimesResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
+	w.WriteHeader(422)
 	_, err := buf.WriteTo(w)
 	return err
 }
 
-type GetQibla400JSONResponse struct{ BadRequestJSONResponse }
+type GetPrayerTimes429JSONResponse struct{ RateLimitedJSONResponse }
 
-func (response GetQibla400JSONResponse) VisitGetQiblaResponse(w http.ResponseWriter) error {
+func (response GetPrayerTimes429JSONResponse) VisitGetPrayerTimesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	w.WriteHeader(429)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetPrayerTimes500JSONResponse struct{ InternalJSONResponse }
+
+func (response GetPrayerTimes500JSONResponse) VisitGetPrayerTimesResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(400)
+	w.WriteHeader(500)
 	_, err := buf.WriteTo(w)
 	return err
 }
 
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
-	// GetPrayerTimes Время намаза по координатам
-	// (GET /api/v1/prayer-times)
+	// ListCalculationMethods Методы расчёта времени намазов
+	// (GET /calculation-methods)
+	ListCalculationMethods(ctx context.Context, request ListCalculationMethodsRequestObject) (ListCalculationMethodsResponseObject, error)
+	// ListCities Поиск и список городов
+	// (GET /cities)
+	ListCities(ctx context.Context, request ListCitiesRequestObject) (ListCitiesResponseObject, error)
+	// GetNearestCity Ближайший город по координатам
+	// (GET /cities/nearest)
+	GetNearestCity(ctx context.Context, request GetNearestCityRequestObject) (GetNearestCityResponseObject, error)
+	// GetCity Один город
+	// (GET /cities/{cityId})
+	GetCity(ctx context.Context, request GetCityRequestObject) (GetCityResponseObject, error)
+	// GetConfig Минимальная версия приложения, флаги, версии контента
+	// (GET /config)
+	GetConfig(ctx context.Context, request GetConfigRequestObject) (GetConfigResponseObject, error)
+	// GetPrayerTimes Расписание намазов на диапазон дат
+	// (GET /prayer-times)
 	GetPrayerTimes(ctx context.Context, request GetPrayerTimesRequestObject) (GetPrayerTimesResponseObject, error)
-	// GetQibla Направление на Каабу
-	// (GET /api/v1/qibla)
-	GetQibla(ctx context.Context, request GetQiblaRequestObject) (GetQiblaResponseObject, error)
 }
 
 type StrictHandlerFunc func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error)
@@ -582,6 +1500,133 @@ type strictHandler struct {
 	options     StrictHTTPServerOptions
 }
 
+// ListCalculationMethods operation middleware
+func (sh *strictHandler) ListCalculationMethods(w http.ResponseWriter, r *http.Request) {
+	var request ListCalculationMethodsRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListCalculationMethods(ctx, request.(ListCalculationMethodsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListCalculationMethods")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListCalculationMethodsResponseObject); ok {
+		if err := validResponse.VisitListCalculationMethodsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListCities operation middleware
+func (sh *strictHandler) ListCities(w http.ResponseWriter, r *http.Request, params ListCitiesParams) {
+	var request ListCitiesRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListCities(ctx, request.(ListCitiesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListCities")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListCitiesResponseObject); ok {
+		if err := validResponse.VisitListCitiesResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetNearestCity operation middleware
+func (sh *strictHandler) GetNearestCity(w http.ResponseWriter, r *http.Request, params GetNearestCityParams) {
+	var request GetNearestCityRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetNearestCity(ctx, request.(GetNearestCityRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetNearestCity")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetNearestCityResponseObject); ok {
+		if err := validResponse.VisitGetNearestCityResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetCity operation middleware
+func (sh *strictHandler) GetCity(w http.ResponseWriter, r *http.Request, cityId CityIdPath, params GetCityParams) {
+	var request GetCityRequestObject
+
+	request.CityId = cityId
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetCity(ctx, request.(GetCityRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetCity")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetCityResponseObject); ok {
+		if err := validResponse.VisitGetCityResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetConfig operation middleware
+func (sh *strictHandler) GetConfig(w http.ResponseWriter, r *http.Request) {
+	var request GetConfigRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetConfig(ctx, request.(GetConfigRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetConfig")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetConfigResponseObject); ok {
+		if err := validResponse.VisitGetConfigResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // GetPrayerTimes operation middleware
 func (sh *strictHandler) GetPrayerTimes(w http.ResponseWriter, r *http.Request, params GetPrayerTimesParams) {
 	var request GetPrayerTimesRequestObject
@@ -608,61 +1653,77 @@ func (sh *strictHandler) GetPrayerTimes(w http.ResponseWriter, r *http.Request, 
 	}
 }
 
-// GetQibla operation middleware
-func (sh *strictHandler) GetQibla(w http.ResponseWriter, r *http.Request, params GetQiblaParams) {
-	var request GetQiblaRequestObject
-
-	request.Params = params
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.GetQibla(ctx, request.(GetQiblaRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "GetQibla")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(GetQiblaResponseObject); ok {
-		if err := validResponse.VisitGetQiblaResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
 // Base64 encoded, compressed with deflate, json marshaled OpenAPI spec.
 // Stored as a slice of fixed-width chunks rather than one concatenated
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
+	"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",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,
