@@ -54,7 +54,13 @@ func run(log *slog.Logger) error {
 	log.Info("migration applied")
 
 	// Redis
-	rdb := redis.NewClient(&redis.Options{Addr: cfg.RedisAddr})
+	rdb := redis.NewClient(&redis.Options{
+		Addr:         cfg.RedisAddr,
+		DialTimeout:  200 * time.Millisecond,
+		ReadTimeout:  200 * time.Millisecond,
+		WriteTimeout: 200 * time.Millisecond,
+		MaxRetries:   1,
+	})
 	defer rdb.Close()
 	if err := rdb.Ping(ctx).Err(); err != nil {
 		return fmt.Errorf("error from %w", err)
@@ -80,8 +86,9 @@ func run(log *slog.Logger) error {
 
 	// Время намаза: Postgres + Aladhan
 	prayerRepo := prayer.NewRepository(db)
+	prayerStore := prayer.NewCachedStore(prayerRepo, rdb, 7*24*time.Hour, log)
 	aladhan := prayer.NewAladhanClient(cfg.AladhanBaseURL)
-	prayerSvc := prayer.NewService(prayerRepo, aladhan, cfg.AladhanMethod, log)
+	prayerSvc := prayer.NewService(prayerStore, aladhan, cfg.AladhanMethod, log)
 
 	// API из openapi.yaml
 	api := handler.NewServer(prayerSvc)
