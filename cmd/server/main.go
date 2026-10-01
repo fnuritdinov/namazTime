@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"nTime/internal/config"
 	"nTime/internal/handler"
+	"nTime/internal/storage"
 	"net/http"
 	"os"
 	"os/signal"
@@ -45,6 +46,11 @@ func run(log *slog.Logger) error {
 		return fmt.Errorf("error from db.Ping %w", err)
 	}
 	log.Info("connected to postgres")
+
+	if err := storage.Migrate(cfg.DatabaseURL); err != nil {
+		return fmt.Errorf("migrate: %w", err)
+	}
+	log.Info("migration applied")
 
 	// Redis
 	rdb := redis.NewClient(&redis.Options{Addr: cfg.RedisAddr})
