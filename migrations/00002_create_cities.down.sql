@@ -1,0 +1,2 @@
+DROP TABLE IF EXISTS city_names;
+DROP TABLE IF EXISTS cities;
