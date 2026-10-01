@@ -30,7 +30,7 @@ func day(s string) time.Time {
 }
 
 func newSvc() *Service {
-	return NewService(fakeCities{"dushanbe": dushanbe})
+	return NewService(fakeCities{"dushanbe": dushanbe}, fakeOfficial{})
 }
 
 func TestGet_ByCity(t *testing.T) {
@@ -97,7 +97,7 @@ func TestGet_Errors(t *testing.T) {
 		t.Errorf("ожидали city.ErrNotFound, получили %v", err)
 	}
 
-	if _, err := svc.Get(ctx, Request{CityID: "dushanbe", Source: "official", From: day("2026-10-01"), To: day("2026-10-01")}); !errors.Is(err, ErrUnsupported) {
+	if _, err := svc.Get(ctx, Request{CityID: "dushanbe", Source: "official", From: day("2026-11-01"), To: day("2026-11-01")}); !errors.Is(err, ErrUnsupported) {
 		t.Errorf("ожидали ErrUnsupported, получили %v", err)
 	}
 }

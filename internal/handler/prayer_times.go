@@ -92,5 +92,13 @@ func toPrayerTimesResponse(s schedule.Schedule) PrayerTimesResponse {
 		id := s.CityID
 		resp.CityId = &id
 	}
+
+	// Новое: название источника и дата обновления — только для официального расписания
+	if len(s.SourceName) > 0 {
+		name := toLocalized(s.SourceName)
+		resp.SourceName = &name
+	}
+	resp.UpdatedAt = s.UpdatedAt
+
 	return resp
 }

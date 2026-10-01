@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"nTime/internal/official"
 	"net/http"
 	"os"
 	"os/signal"
@@ -91,7 +92,8 @@ func run(log *slog.Logger) error {
 
 	// 3. Зависимости
 	cityRepo := city.NewRepository(db)
-	scheduleSvc := schedule.NewService(cityRepo)
+	officialRepo := official.NewRepository(db)
+	scheduleSvc := schedule.NewService(cityRepo, officialRepo)
 
 	// 4. API из openapi.yaml — один раз, с префиксом /v1
 	api := handler.NewServer(cityRepo, scheduleSvc)
