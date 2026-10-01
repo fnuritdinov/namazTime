@@ -9,6 +9,8 @@ require (
 	github.com/jackc/pgx/v5 v5.11.0
 	github.com/oapi-codegen/runtime v1.7.0
 	github.com/redis/go-redis/v9 v9.22.0
+	github.com/sams96/rgeo v1.3.0
+	github.com/twpayne/go-geom v1.7.0
 )
 
 require (
@@ -17,6 +19,7 @@ require (
 	github.com/dprotaso/go-yit v0.0.0-20220510233725-9ba8df137936 // indirect
 	github.com/go-openapi/jsonpointer v0.23.1 // indirect
 	github.com/go-openapi/swag/jsonname v0.26.0 // indirect
+	github.com/golang/geo v0.0.0-20230421003525-6adc56603217 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/jackc/pgerrcode v0.0.0-20220416144525-469b46aa5efa // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect

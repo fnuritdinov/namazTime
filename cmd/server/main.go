@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"nTime/internal/config"
+	"nTime/internal/geo"
 	"nTime/internal/handler"
 	"nTime/internal/prayer"
 	"nTime/internal/storage"
@@ -90,8 +91,14 @@ func run(log *slog.Logger) error {
 	aladhan := prayer.NewAladhanClient(cfg.AladhanBaseURL)
 	prayerSvc := prayer.NewService(prayerStore, aladhan, cfg.AladhanMethod, log)
 
+	geoLoc, err := geo.New()
+	if err != nil {
+		return fmt.Errorf("geo: %w", err)
+	}
+	log.Info("geo data loaded")
+
 	// API из openapi.yaml
-	api := handler.NewServer(prayerSvc)
+	api := handler.NewServer(prayerSvc, geoLoc)
 	strictHandler := handler.NewStrictHandlerWithOptions(api, nil, handler.StrictHTTPServerOptions{
 		RequestErrorHandlerFunc:  handler.RequestErrorHandler,
 		ResponseErrorHandlerFunc: handler.InternalErrorHandler(log),

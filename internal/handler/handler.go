@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"nTime/internal/geo"
 	"time"
 
 	openapi_types "github.com/oapi-codegen/runtime/types"
@@ -14,10 +15,14 @@ import (
 
 type Server struct {
 	prayer *prayer.Service
+	geo    *geo.Locator
 }
 
-func NewServer(prayerSvc *prayer.Service) *Server {
-	return &Server{prayer: prayerSvc}
+func NewServer(prayerSvc *prayer.Service, geoLoc *geo.Locator) *Server {
+	return &Server{
+		prayer: prayerSvc,
+		geo:    geoLoc,
+	}
 }
 
 var _ StrictServerInterface = (*Server)(nil)
@@ -49,15 +54,16 @@ func (s *Server) GetPrayerTimes(ctx context.Context, req GetPrayerTimesRequestOb
 		return nil, err // → 500, детали уйдут в лог
 	}
 
-	return GetPrayerTimes200JSONResponse(toPrayerTimesResponse(p.Lat, p.Lon, d)), nil
+	country := s.geo.Country(p.Lat, p.Lon)
+	return GetPrayerTimes200JSONResponse(toPrayerTimesResponse(p.Lat, p.Lon, country, d)), nil
 }
 
 // toPrayerTimesResponse переводит наши типы в типы API.
-func toPrayerTimesResponse(lat, lon float64, d prayer.DayTimings) PrayerTimesResponse {
+func toPrayerTimesResponse(lat, lon float64, country string, d prayer.DayTimings) PrayerTimesResponse {
 	t := d.Timings
 	resp := PrayerTimesResponse{
 		Date:     openapi_types.Date{Time: d.Date},
-		Location: Location{Lat: lat, Lon: lon, Country: ""}, // страну определим на шаге 6
+		Location: Location{Lat: lat, Lon: lon, Country: country}, // страну определим на шаге 6
 		Source:   PrayerTimesResponseSource(d.Source),
 		Timings: Timings{
 			Fajr:    PrayerTime{Start: t.Fajr},

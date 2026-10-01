@@ -1,9 +1,7 @@
-FROM golang:1.26.3-alpine AS build
+FROM golang:1.26-alpine AS build
 WORKDIR /src
-COPY go.mod go.sum ./
-RUN go mod download
 COPY . .
-RUN CGO_ENABLED=0 go build -o /server ./cmd/server
+RUN CGO_ENABLED=0 go build -mod=vendor -o /server ./cmd/server
 
 FROM gcr.io/distroless/static-debian12
 COPY --from=build /server /server
