@@ -29,7 +29,7 @@ func Migrate(databaseURL string) error {
 	defer m.Close()
 
 	// ErrNoChange - не ошибка: просто все миграции уже применены
-	if err := m.Up(); err != nil && errors.Is(err, migrate.ErrNoChange) {
+	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
 		return fmt.Errorf("migrate up: %w", err)
 	}
 
