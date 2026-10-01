@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"nTime/internal/httpcache"
 	"nTime/internal/official"
 	"net/http"
 	"os"
@@ -107,10 +108,17 @@ func run(log *slog.Logger) error {
 		ErrorHandlerFunc: handler.RequestErrorHandler,
 	})
 
-	// 5. HTTP-сервер
+	// 5. HTTP-кеширование по ТЗ (§2.5): расписания — 1 час, справочники — сутки
+	cache := httpcache.Middleware([]httpcache.Rule{
+		{Prefix: "/v1/prayer-times", MaxAge: time.Hour},
+		{Prefix: "/v1/config", MaxAge: time.Hour},
+		{Prefix: "/v1/cities", MaxAge: 24 * time.Hour},
+		{Prefix: "/v1/calculation-methods", MaxAge: 24 * time.Hour},
+	})
+
 	srv := &http.Server{
 		Addr:              ":" + cfg.HTTPPort,
-		Handler:           handler.RequestID(mux),
+		Handler:           handler.RequestID(cache(mux)),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
