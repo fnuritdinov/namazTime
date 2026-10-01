@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"nTime/internal/config"
 	"nTime/internal/handler"
+	"nTime/internal/prayer"
 	"nTime/internal/storage"
 	"net/http"
 	"os"
@@ -77,7 +78,13 @@ func run(log *slog.Logger) error {
 		json.NewEncoder(w).Encode(status)
 	})
 
-	api := handler.New()
+	// Время намаза: Postgres + Aladhan
+	prayerRepo := prayer.NewRepository(db)
+	aladhan := prayer.NewAladhanClient(cfg.AladhanBaseURL)
+	prayerSvc := prayer.NewService(prayerRepo, aladhan, cfg.AladhanMethod, log)
+
+	// API из openapi.yaml
+	api := handler.NewServer(prayerSvc)
 	strictHandler := handler.NewStrictHandlerWithOptions(api, nil, handler.StrictHTTPServerOptions{
 		RequestErrorHandlerFunc:  handler.RequestErrorHandler,
 		ResponseErrorHandlerFunc: handler.InternalErrorHandler(log),
