@@ -6,12 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"nTime/internal/city"
-	"nTime/internal/config"
-	"nTime/internal/geo"
-	"nTime/internal/handler"
-	"nTime/internal/prayer"
-	"nTime/internal/storage"
 	"net/http"
 	"os"
 	"os/signal"
@@ -21,6 +15,12 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
+
+	"nTime/internal/city"
+	"nTime/internal/config"
+	"nTime/internal/handler"
+	"nTime/internal/schedule"
+	"nTime/internal/storage"
 )
 
 func main() {
@@ -35,28 +35,29 @@ func main() {
 func run(log *slog.Logger) error {
 	cfg, err := config.Load()
 	if err != nil {
-		return fmt.Errorf("error from config.Load %w", err)
+		return fmt.Errorf("config: %w", err)
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
+	// Postgres
 	db, err := pgxpool.New(ctx, cfg.DatabaseURL)
 	if err != nil {
-		return fmt.Errorf("error from pgxpool.New %w", err)
+		return fmt.Errorf("pgxpool.New: %w", err)
 	}
 	defer db.Close()
 	if err := db.Ping(ctx); err != nil {
-		return fmt.Errorf("error from db.Ping %w", err)
+		return fmt.Errorf("postgres ping: %w", err)
 	}
 	log.Info("connected to postgres")
 
 	if err := storage.Migrate(cfg.DatabaseURL); err != nil {
 		return fmt.Errorf("migrate: %w", err)
 	}
-	log.Info("migration applied")
+	log.Info("migrations applied")
 
-	// Redis
+	// Redis — кеш: должен отвечать быстро или не отвечать вовсе
 	rdb := redis.NewClient(&redis.Options{
 		Addr:         cfg.RedisAddr,
 		DialTimeout:  200 * time.Millisecond,
@@ -66,56 +67,45 @@ func run(log *slog.Logger) error {
 	})
 	defer rdb.Close()
 	if err := rdb.Ping(ctx).Err(); err != nil {
-		return fmt.Errorf("error from %w", err)
+		return fmt.Errorf("redis ping: %w", err)
 	}
 	log.Info("connected to redis")
 
+	// 1. Роутер
 	mux := http.NewServeMux()
+
+	// 2. Служебный health check
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
 		status := map[string]string{"status": "ok", "postgres": "ok", "redis": "ok"}
 		code := http.StatusOK
 		if err := db.Ping(r.Context()); err != nil {
 			status["postgres"], status["status"], code = "down", "degraded", http.StatusServiceUnavailable
 		}
-
-		if err = rdb.Ping(r.Context()).Err(); err != nil {
+		if err := rdb.Ping(r.Context()).Err(); err != nil {
 			status["redis"], status["status"], code = "down", "degraded", http.StatusServiceUnavailable
 		}
-
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(code)
 		json.NewEncoder(w).Encode(status)
 	})
 
-	// Время намаза: Postgres + Aladhan
-	prayerRepo := prayer.NewRepository(db)
-	prayerStore := prayer.NewCachedStore(prayerRepo, rdb, 7*24*time.Hour, log)
-	aladhan := prayer.NewAladhanClient(cfg.AladhanBaseURL)
-	prayerSvc := prayer.NewService(prayerStore, aladhan, cfg.AladhanMethod, log)
-
-	geoLoc, err := geo.New()
-	if err != nil {
-		return fmt.Errorf("geo: %w", err)
-	}
-	log.Info("geo data loaded")
-
+	// 3. Зависимости
 	cityRepo := city.NewRepository(db)
-	api := handler.NewServer(prayerSvc, geoLoc, cityRepo)
+	scheduleSvc := schedule.NewService(cityRepo)
+
+	// 4. API из openapi.yaml — один раз, с префиксом /v1
+	api := handler.NewServer(cityRepo, scheduleSvc)
 	strictHandler := handler.NewStrictHandlerWithOptions(api, nil, handler.StrictHTTPServerOptions{
 		RequestErrorHandlerFunc:  handler.RequestErrorHandler,
 		ResponseErrorHandlerFunc: handler.InternalErrorHandler(log),
 	})
-	handler.HandlerWithOptions(strictHandler, handler.StdHTTPServerOptions{
-		BaseRouter:       mux,
-		ErrorHandlerFunc: handler.RequestErrorHandler,
-	})
-
 	handler.HandlerWithOptions(strictHandler, handler.StdHTTPServerOptions{
 		BaseURL:          "/v1",
 		BaseRouter:       mux,
 		ErrorHandlerFunc: handler.RequestErrorHandler,
 	})
 
+	// 5. HTTP-сервер
 	srv := &http.Server{
 		Addr:              ":" + cfg.HTTPPort,
 		Handler:           handler.RequestID(mux),

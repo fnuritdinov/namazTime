@@ -3,20 +3,18 @@ package handler
 import (
 	"context"
 	"errors"
+	"nTime/internal/schedule"
 
 	"nTime/internal/city"
-	"nTime/internal/geo"
-	"nTime/internal/prayer"
 )
 
 type Server struct {
-	prayer *prayer.Service
-	geo    *geo.Locator
-	cities *city.Repository
+	cities   *city.Repository
+	schedule *schedule.Service
 }
 
-func NewServer(prayerSvc *prayer.Service, geoLoc *geo.Locator, cityRepo *city.Repository) *Server {
-	return &Server{prayer: prayerSvc, geo: geoLoc, cities: cityRepo}
+func NewServer(cityRepo *city.Repository, scheduleSvc *schedule.Service) *Server {
+	return &Server{cities: cityRepo, schedule: scheduleSvc}
 }
 
 var _ StrictServerInterface = (*Server)(nil)
@@ -25,10 +23,5 @@ var errNotImplemented = errors.New("not implemented yet")
 
 // GET /v1/config — шаг E
 func (s *Server) GetConfig(ctx context.Context, req GetConfigRequestObject) (GetConfigResponseObject, error) {
-	return nil, errNotImplemented
-}
-
-// GET /v1/prayer-times — шаг D
-func (s *Server) GetPrayerTimes(ctx context.Context, req GetPrayerTimesRequestObject) (GetPrayerTimesResponseObject, error) {
 	return nil, errNotImplemented
 }
