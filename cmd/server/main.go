@@ -97,7 +97,14 @@ func run(log *slog.Logger) error {
 	scheduleSvc := schedule.NewService(cityRepo, officialRepo)
 
 	// 4. API из openapi.yaml — один раз, с префиксом /v1
-	api := handler.NewServer(cityRepo, scheduleSvc)
+	api := handler.NewServer(cityRepo, scheduleSvc, handler.AppInfo{
+		MinSupportedVersion: cfg.MinAppVersion,
+		LatestVersion:       cfg.LatestAppVersion,
+		SupportURL:          cfg.SupportURL,
+		FeatureSync:         cfg.FeatureSync,
+		FeatureQuranSearch:  cfg.FeatureQuranSearch,
+		ContentVersions:     cfg.ContentVersions,
+	})
 	strictHandler := handler.NewStrictHandlerWithOptions(api, nil, handler.StrictHTTPServerOptions{
 		RequestErrorHandlerFunc:  handler.RequestErrorHandler,
 		ResponseErrorHandlerFunc: handler.InternalErrorHandler(log),
@@ -116,6 +123,7 @@ func run(log *slog.Logger) error {
 		{Prefix: "/v1/calculation-methods", MaxAge: 24 * time.Hour},
 	})
 
+	// 5. HTTP-сервер
 	srv := &http.Server{
 		Addr:              ":" + cfg.HTTPPort,
 		Handler:           handler.RequestID(cache(mux)),

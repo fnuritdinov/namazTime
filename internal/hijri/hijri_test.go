@@ -31,3 +31,29 @@ func TestMonthName(t *testing.T) {
 		t.Error("месяц 13 не должен существовать")
 	}
 }
+
+func TestToGregorian_RoundTrip(t *testing.T) {
+	for d := time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC); d.Year() < 2031; d = d.AddDate(0, 0, 1) {
+		if back := ToGregorian(FromGregorian(d)); !back.Equal(d) {
+			t.Fatalf("%s → %+v → %s", d.Format("2006-01-02"), FromGregorian(d), back.Format("2006-01-02"))
+		}
+	}
+}
+
+func TestNextRamadan(t *testing.T) {
+	tests := []struct {
+		today, wantStart string
+		wantYear         int
+	}{
+		{"2026-10-01", "2027-02-08", 1448}, // ТЗ §4: ramadan 1448, startDate 2027-02-08
+		{"2027-02-20", "2027-02-08", 1448}, // идёт Рамадан — отдаём текущий
+		{"2027-03-15", "2028-01-28", 1449}, // Рамадан прошёл — следующий
+	}
+	for _, tt := range tests {
+		today, _ := time.Parse("2006-01-02", tt.today)
+		year, start := NextRamadan(today)
+		if year != tt.wantYear || start.Format("2006-01-02") != tt.wantStart {
+			t.Errorf("%s → %d %s, want %d %s", tt.today, year, start.Format("2006-01-02"), tt.wantYear, tt.wantStart)
+		}
+	}
+}

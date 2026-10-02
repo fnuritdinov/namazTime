@@ -58,3 +58,34 @@ var monthNames = [12]map[string]string{
 	{"en": "Dhu al-Qaʿdah", "ru": "Зуль-када", "ar": "ذو القعدة"},
 	{"en": "Dhu al-Hijjah", "ru": "Зуль-хиджа", "ar": "ذو الحجة"},
 }
+
+// ToGregorian — обратное преобразование (табличный календарь): дата хиджры → григорианская.
+func ToGregorian(d Date) time.Time {
+	jdn := (11*d.Year+3)/30 + 354*d.Year + 30*d.Month - (d.Month-1)/2 + d.Day + 1948440 - 385
+	return fromJulianDayNumber(jdn)
+}
+
+// fromJulianDayNumber — григорианская дата по номеру юлианского дня.
+func fromJulianDayNumber(jdn int) time.Time {
+	a := jdn + 32044
+	b := (4*a + 3) / 146097
+	c := a - 146097*b/4
+	d := (4*c + 3) / 1461
+	e := c - 1461*d/4
+	m := (5*e + 2) / 153
+	day := e - (153*m+2)/5 + 1
+	month := m + 3 - 12*(m/10)
+	year := 100*b + d - 4800 + m/10
+	return time.Date(year, time.Month(month), day, 0, 0, 0, 0, time.UTC)
+}
+
+// NextRamadan — дата 1 Рамадана, ближайшего к today (текущего или следующего), по табличному календарю.
+// Официальные даты по странам (§7 ТЗ) появятся на шаге F и будут важнее этого расчёта.
+func NextRamadan(today time.Time) (hijriYear int, start time.Time) {
+	h := FromGregorian(today)
+	year := h.Year
+	if h.Month > 9 { // Рамадан этого года уже прошёл
+		year++
+	}
+	return year, ToGregorian(Date{Day: 1, Month: 9, Year: year})
+}

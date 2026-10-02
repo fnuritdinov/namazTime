@@ -31,6 +31,8 @@ services:
       HTTP_PORT: "8080"
       DATABASE_URL: postgres://namaz:namaz@postgres:5432/namaz?sslmode=disable
       REDIS_ADDR: redis:6379
+      APP_MIN_VERSION: "1.2.0"
+      CONTENT_VERSIONS: "cities=2,quran=1"
     depends_on:
       postgres:
         condition: service_healthy
