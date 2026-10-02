@@ -272,6 +272,33 @@ type Coordinate struct {
 	Longitude float64 `json:"longitude"`
 }
 
+// DailyReminder defines model for DailyReminder.
+type DailyReminder struct {
+	Day int `json:"day"`
+
+	// Text Локализуемая строка. Ключи — коды языков.
+	//
+	// Example: {"ar":"خجند","en":"Khujand","ru":"Худжанд","tg":"Хуҷанд"}
+	Text LocalizedString `json:"text"`
+}
+
+// Dua defines model for Dua.
+type Dua struct {
+	Arabic string `json:"arabic"`
+
+	// Id Example: iftar
+	Id string `json:"id"`
+
+	// Source Example: Sunan Abi Dawud 2357
+	Source *string `json:"source,omitempty"`
+
+	// Translations Локализуемая строка. Ключи — коды языков.
+	//
+	// Example: {"ar":"خجند","en":"Khujand","ru":"Худжанд","tg":"Хуҷанд"}
+	Translations    LocalizedString `json:"translations"`
+	Transliteration *string         `json:"transliteration,omitempty"`
+}
+
 // Error defines model for Error.
 type Error struct {
 	Error ErrorBody `json:"error"`
@@ -316,6 +343,21 @@ type HijriDate struct {
 
 	// Year Example: 1448
 	Year int `json:"year"`
+}
+
+// HijriMonthList defines model for HijriMonthList.
+type HijriMonthList struct {
+	Items []HijriMonthStart `json:"items"`
+}
+
+// HijriMonthStart defines model for HijriMonthStart.
+type HijriMonthStart struct {
+	// Month Example: 9
+	Month int `json:"month"`
+
+	// StartDate Example: 2027-02-08
+	StartDate openapi_types.Date `json:"startDate"`
+	Status    ConfirmationStatus `json:"status"`
 }
 
 // IshaRule defines model for IshaRule.
@@ -442,6 +484,40 @@ type PrayerTimesResponse struct {
 	UpdatedAt *time.Time `json:"updatedAt,omitempty"`
 }
 
+// Ramadan defines model for Ramadan.
+type Ramadan struct {
+	ConfirmedAt *time.Time `json:"confirmedAt,omitempty"`
+
+	// Country Example: TJ
+	Country        string          `json:"country"`
+	DailyReminders []DailyReminder `json:"dailyReminders"`
+	Duas           []Dua           `json:"duas"`
+
+	// EidAlFitr Example: 2027-03-10
+	EidAlFitr openapi_types.Date `json:"eidAlFitr"`
+
+	// EndDate Example: 2027-03-09
+	EndDate openapi_types.Date `json:"endDate"`
+
+	// HijriYear Example: 1448
+	HijriYear int `json:"hijriYear"`
+
+	// LaylatAlQadrExpected Example: 2027-03-05
+	LaylatAlQadrExpected *openapi_types.Date `json:"laylatAlQadrExpected,omitempty"`
+
+	// Length Example: 30
+	Length int `json:"length"`
+
+	// Source Локализуемая строка. Ключи — коды языков.
+	//
+	// Example: {"ar":"خجند","en":"Khujand","ru":"Худжанд","tg":"Хуҷанд"}
+	Source *LocalizedString `json:"source,omitempty"`
+
+	// StartDate Example: 2027-02-08
+	StartDate openapi_types.Date `json:"startDate"`
+	Status    ConfirmationStatus `json:"status"`
+}
+
 // RamadanSummary defines model for RamadanSummary.
 type RamadanSummary struct {
 	// HijriYear Example: 1448
@@ -460,6 +536,9 @@ type CityIdPath = string
 
 // CountryQuery Example: TJ
 type CountryQuery = string
+
+// CountryRequired Example: TJ
+type CountryRequired = string
 
 // Cursor defines model for Cursor.
 type Cursor = string
@@ -519,6 +598,15 @@ type GetCityParams struct {
 	AcceptLanguage *AcceptLanguage `json:"Accept-Language,omitempty"`
 }
 
+// GetHijriMonthsParams defines parameters for GetHijriMonths.
+type GetHijriMonthsParams struct {
+	// Country Код страны ISO 3166-1 alpha-2
+	Country CountryRequired `form:"country" json:"country"`
+
+	// Year Год хиджры
+	Year int `form:"year" json:"year"`
+}
+
 // GetPrayerTimesParams defines parameters for GetPrayerTimes.
 type GetPrayerTimesParams struct {
 	// CityId Идентификатор города. Обязателен, если не переданы lat/lon/timeZoneId.
@@ -539,6 +627,15 @@ type GetPrayerTimesParams struct {
 	Source *PrayerSourceParam `form:"source,omitempty" json:"source,omitempty"`
 }
 
+// GetRamadanParams defines parameters for GetRamadan.
+type GetRamadanParams struct {
+	// Country Код страны ISO 3166-1 alpha-2
+	Country CountryRequired `form:"country" json:"country"`
+
+	// AcceptLanguage Язык UI-текстов (tg, ru, en, ar). Фолбэк — en.
+	AcceptLanguage *AcceptLanguage `json:"Accept-Language,omitempty"`
+}
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// ListCalculationMethods Методы расчёта времени намазов
@@ -556,9 +653,15 @@ type ServerInterface interface {
 	// GetConfig Минимальная версия приложения, флаги, версии контента
 	// (GET /config)
 	GetConfig(w http.ResponseWriter, r *http.Request)
+	// GetHijriMonths Начала месяцев хиджры по стране (подтверждённые/ожидаемые)
+	// (GET /hijri/months)
+	GetHijriMonths(w http.ResponseWriter, r *http.Request, params GetHijriMonthsParams)
 	// GetPrayerTimes Расписание намазов на диапазон дат
 	// (GET /prayer-times)
 	GetPrayerTimes(w http.ResponseWriter, r *http.Request, params GetPrayerTimesParams)
+	// GetRamadan Даты Рамадана и Ида по стране + дуа
+	// (GET /ramadan/{hijriYear})
+	GetRamadan(w http.ResponseWriter, r *http.Request, hijriYear int, params GetRamadanParams)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -808,6 +911,52 @@ func (siw *ServerInterfaceWrapper) GetConfig(w http.ResponseWriter, r *http.Requ
 	handler.ServeHTTP(w, r)
 }
 
+// GetHijriMonths operation middleware
+func (siw *ServerInterfaceWrapper) GetHijriMonths(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetHijriMonthsParams
+
+	// ------------- Required query parameter "country" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "country", r.URL.Query(), &params.Country, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "country"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "country", Err: err})
+		}
+		return
+	}
+
+	// ------------- Required query parameter "year" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "year", r.URL.Query(), &params.Year, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "year"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "year", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetHijriMonths(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetPrayerTimes operation middleware
 func (siw *ServerInterfaceWrapper) GetPrayerTimes(w http.ResponseWriter, r *http.Request) {
 
@@ -945,6 +1094,69 @@ func (siw *ServerInterfaceWrapper) GetPrayerTimes(w http.ResponseWriter, r *http
 	handler.ServeHTTP(w, r)
 }
 
+// GetRamadan operation middleware
+func (siw *ServerInterfaceWrapper) GetRamadan(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "hijriYear" -------------
+	var hijriYear int
+
+	err = runtime.BindStyledParameterWithOptions("simple", "hijriYear", r.PathValue("hijriYear"), &hijriYear, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "hijriYear", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetRamadanParams
+
+	// ------------- Required query parameter "country" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "country", r.URL.Query(), &params.Country, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "country"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "country", Err: err})
+		}
+		return
+	}
+
+	headers := r.Header
+
+	// ------------- Optional header parameter "Accept-Language" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Accept-Language")]; found {
+		var AcceptLanguage AcceptLanguage
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Accept-Language", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Accept-Language", valueList[0], &AcceptLanguage, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Accept-Language", Err: err})
+			return
+		}
+
+		params.AcceptLanguage = &AcceptLanguage
+
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetRamadan(w, r, hijriYear, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 type UnescapedCookieParamError struct {
 	ParamName string
 	Err       error
@@ -1071,6 +1283,8 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/cities/{cityId}", wrapper.GetCity)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/calculation-methods", wrapper.ListCalculationMethods)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/prayer-times", wrapper.GetPrayerTimes)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/ramadan/{hijriYear}", wrapper.GetRamadan)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/hijri/months", wrapper.GetHijriMonths)
 
 	return m
 }
@@ -1344,6 +1558,56 @@ func (response GetConfig500JSONResponse) VisitGetConfigResponse(w http.ResponseW
 	return err
 }
 
+type GetHijriMonthsRequestObject struct {
+	Params GetHijriMonthsParams
+}
+
+type GetHijriMonthsResponseObject interface {
+	VisitGetHijriMonthsResponse(w http.ResponseWriter) error
+}
+
+type GetHijriMonths200JSONResponse HijriMonthList
+
+func (response GetHijriMonths200JSONResponse) VisitGetHijriMonthsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetHijriMonths400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response GetHijriMonths400JSONResponse) VisitGetHijriMonthsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetHijriMonths500JSONResponse struct{ InternalJSONResponse }
+
+func (response GetHijriMonths500JSONResponse) VisitGetHijriMonthsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type GetPrayerTimesRequestObject struct {
 	Params GetPrayerTimesParams
 }
@@ -1439,6 +1703,71 @@ func (response GetPrayerTimes500JSONResponse) VisitGetPrayerTimesResponse(w http
 	return err
 }
 
+type GetRamadanRequestObject struct {
+	HijriYear int `json:"hijriYear"`
+	Params    GetRamadanParams
+}
+
+type GetRamadanResponseObject interface {
+	VisitGetRamadanResponse(w http.ResponseWriter) error
+}
+
+type GetRamadan200JSONResponse Ramadan
+
+func (response GetRamadan200JSONResponse) VisitGetRamadanResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetRamadan400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response GetRamadan400JSONResponse) VisitGetRamadanResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetRamadan404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetRamadan404JSONResponse) VisitGetRamadanResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetRamadan500JSONResponse struct{ InternalJSONResponse }
+
+func (response GetRamadan500JSONResponse) VisitGetRamadanResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 	// ListCalculationMethods Методы расчёта времени намазов
@@ -1456,9 +1785,15 @@ type StrictServerInterface interface {
 	// GetConfig Минимальная версия приложения, флаги, версии контента
 	// (GET /config)
 	GetConfig(ctx context.Context, request GetConfigRequestObject) (GetConfigResponseObject, error)
+	// GetHijriMonths Начала месяцев хиджры по стране (подтверждённые/ожидаемые)
+	// (GET /hijri/months)
+	GetHijriMonths(ctx context.Context, request GetHijriMonthsRequestObject) (GetHijriMonthsResponseObject, error)
 	// GetPrayerTimes Расписание намазов на диапазон дат
 	// (GET /prayer-times)
 	GetPrayerTimes(ctx context.Context, request GetPrayerTimesRequestObject) (GetPrayerTimesResponseObject, error)
+	// GetRamadan Даты Рамадана и Ида по стране + дуа
+	// (GET /ramadan/{hijriYear})
+	GetRamadan(ctx context.Context, request GetRamadanRequestObject) (GetRamadanResponseObject, error)
 }
 
 type StrictHandlerFunc func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error)
@@ -1627,6 +1962,32 @@ func (sh *strictHandler) GetConfig(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// GetHijriMonths operation middleware
+func (sh *strictHandler) GetHijriMonths(w http.ResponseWriter, r *http.Request, params GetHijriMonthsParams) {
+	var request GetHijriMonthsRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetHijriMonths(ctx, request.(GetHijriMonthsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetHijriMonths")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetHijriMonthsResponseObject); ok {
+		if err := validResponse.VisitGetHijriMonthsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // GetPrayerTimes operation middleware
 func (sh *strictHandler) GetPrayerTimes(w http.ResponseWriter, r *http.Request, params GetPrayerTimesParams) {
 	var request GetPrayerTimesRequestObject
@@ -1653,77 +2014,114 @@ func (sh *strictHandler) GetPrayerTimes(w http.ResponseWriter, r *http.Request, 
 	}
 }
 
+// GetRamadan operation middleware
+func (sh *strictHandler) GetRamadan(w http.ResponseWriter, r *http.Request, hijriYear int, params GetRamadanParams) {
+	var request GetRamadanRequestObject
+
+	request.HijriYear = hijriYear
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetRamadan(ctx, request.(GetRamadanRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetRamadan")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetRamadanResponseObject); ok {
+		if err := validResponse.VisitGetRamadanResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // Base64 encoded, compressed with deflate, json marshaled OpenAPI spec.
 // Stored as a slice of fixed-width chunks rather than one concatenated
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
+	"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",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

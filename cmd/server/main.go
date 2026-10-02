@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"nTime/internal/hijrimonth"
 	"nTime/internal/httpcache"
 	"nTime/internal/official"
 	"net/http"
@@ -95,9 +96,10 @@ func run(log *slog.Logger) error {
 	cityRepo := city.NewRepository(db)
 	officialRepo := official.NewRepository(db)
 	scheduleSvc := schedule.NewService(cityRepo, officialRepo)
+	hijriSvc := hijrimonth.NewService(hijrimonth.NewRepository(db))
 
 	// 4. API из openapi.yaml — один раз, с префиксом /v1
-	api := handler.NewServer(cityRepo, scheduleSvc, handler.AppInfo{
+	api := handler.NewServer(cityRepo, scheduleSvc, hijriSvc, handler.AppInfo{
 		MinSupportedVersion: cfg.MinAppVersion,
 		LatestVersion:       cfg.LatestAppVersion,
 		SupportURL:          cfg.SupportURL,
@@ -121,6 +123,8 @@ func run(log *slog.Logger) error {
 		{Prefix: "/v1/config", MaxAge: time.Hour},
 		{Prefix: "/v1/cities", MaxAge: 24 * time.Hour},
 		{Prefix: "/v1/calculation-methods", MaxAge: 24 * time.Hour},
+		{Prefix: "/v1/ramadan", MaxAge: time.Hour},
+		{Prefix: "/v1/hijri", MaxAge: time.Hour},
 	})
 
 	// 5. HTTP-сервер

@@ -5,6 +5,7 @@ info:
   description: |
     Бэкенд приложения Namoz. Составлено по Backend-API.md (техническое задание).
     Часть 1: конфигурация, города, методы расчёта, время намазов.
+    Часть 2: Рамадан и месяцы хиджры по странам.
 
     Общие правила (§2 ТЗ):
     - Имена полей — camelCase.
@@ -22,6 +23,7 @@ tags:
   - name: config
   - name: cities
   - name: prayer
+  - name: hijri
 
 paths:
   /config:
@@ -223,6 +225,66 @@ paths:
         "500":
           $ref: "#/components/responses/Internal"
 
+  /ramadan/{hijriYear}:
+    get:
+      tags: [hijri]
+      operationId: getRamadan
+      summary: Даты Рамадана и Ида по стране + дуа
+      description: |
+        404 — если данных на этот год ещё нет (приложение использует Умм аль-Кура).
+      parameters:
+        - name: hijriYear
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1400
+            maximum: 1600
+            example: 1448
+        - $ref: "#/components/parameters/CountryRequired"
+        - $ref: "#/components/parameters/AcceptLanguage"
+      responses:
+        "200":
+          description: Рамадан
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ramadan"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/Internal"
+
+  /hijri/months:
+    get:
+      tags: [hijri]
+      operationId: getHijriMonths
+      summary: Начала месяцев хиджры по стране (подтверждённые/ожидаемые)
+      parameters:
+        - $ref: "#/components/parameters/CountryRequired"
+        - name: year
+          in: query
+          required: true
+          description: Год хиджры
+          schema:
+            type: integer
+            minimum: 1400
+            maximum: 1600
+            example: 1448
+      responses:
+        "200":
+          description: Начала месяцев (только те, что известны)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HijriMonthList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/Internal"
+
 components:
   parameters:
     AcceptLanguage:
@@ -237,6 +299,15 @@ components:
       name: country
       in: query
       required: false
+      description: Код страны ISO 3166-1 alpha-2
+      schema:
+        type: string
+        pattern: "^[A-Z]{2}$"
+        example: TJ
+    CountryRequired:
+      name: country
+      in: query
+      required: true
       description: Код страны ISO 3166-1 alpha-2
       schema:
         type: string
@@ -594,6 +665,106 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/PrayerDay"
+
+    # ---------- Хиджра и Рамадан ----------
+    HijriMonthStart:
+      type: object
+      required: [month, startDate, status]
+      properties:
+        month:
+          type: integer
+          minimum: 1
+          maximum: 12
+          example: 9
+        startDate:
+          type: string
+          format: date
+          example: "2027-02-08"
+        status:
+          $ref: "#/components/schemas/ConfirmationStatus"
+
+    HijriMonthList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/HijriMonthStart"
+
+    Dua:
+      type: object
+      required: [id, arabic, translations]
+      properties:
+        id:
+          type: string
+          example: iftar
+        arabic:
+          type: string
+        transliteration:
+          type: string
+        translations:
+          $ref: "#/components/schemas/LocalizedString"
+        source:
+          type: string
+          example: Sunan Abi Dawud 2357
+
+    DailyReminder:
+      type: object
+      required: [day, text]
+      properties:
+        day:
+          type: integer
+          minimum: 1
+          maximum: 30
+        text:
+          $ref: "#/components/schemas/LocalizedString"
+
+    Ramadan:
+      type: object
+      required: [hijriYear, country, status, startDate, endDate, length, eidAlFitr, duas, dailyReminders]
+      properties:
+        hijriYear:
+          type: integer
+          example: 1448
+        country:
+          type: string
+          example: TJ
+        status:
+          $ref: "#/components/schemas/ConfirmationStatus"
+        startDate:
+          type: string
+          format: date
+          example: "2027-02-08"
+        endDate:
+          type: string
+          format: date
+          example: "2027-03-09"
+        length:
+          type: integer
+          example: 30
+        eidAlFitr:
+          type: string
+          format: date
+          example: "2027-03-10"
+        laylatAlQadrExpected:
+          type: string
+          format: date
+          example: "2027-03-05"
+        confirmedAt:
+          type: string
+          format: date-time
+          nullable: true
+        source:
+          $ref: "#/components/schemas/LocalizedString"
+        duas:
+          type: array
+          items:
+            $ref: "#/components/schemas/Dua"
+        dailyReminders:
+          type: array
+          items:
+            $ref: "#/components/schemas/DailyReminder"
 
     # ---------- Ошибки ----------
     ErrorCode:
