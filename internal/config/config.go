@@ -20,8 +20,9 @@ type Config struct {
 	FeatureQuranSearch bool           // FEATURE_QURAN_SEARCH
 	ContentVersions    map[string]int // CONTENT_VERSIONS="cities=1,quran=3"
 	// Защита (§16 ТЗ)
-	RateLimitPerMinute int  // RATE_LIMIT_PER_MINUTE — запросов в минуту с одного IP
-	TrustProxy         bool // TRUST_PROXY — сервер за своим nginx/CDN, IP брать из X-Forwarded-For
+	RateLimitPerMinute        int  // RATE_LIMIT_PER_MINUTE — запросов в минуту с одного IP
+	DevicesRateLimitPerMinute int  // DEVICES_RATE_LIMIT_PER_MINUTE — то же для /v1/devices
+	TrustProxy                bool // TRUST_PROXY — сервер за своим nginx/CDN, IP брать из X-Forwarded-For
 }
 
 func Load() (Config, error) {
@@ -41,6 +42,7 @@ func Load() (Config, error) {
 	if cfg.FeatureSync, err = getBool("FEATURE_SYNC", false); err != nil {
 		return Config{}, err
 	}
+
 	if cfg.FeatureQuranSearch, err = getBool("FEATURE_QURAN_SEARCH", false); err != nil {
 		return Config{}, err
 	}
@@ -48,7 +50,12 @@ func Load() (Config, error) {
 	if cfg.TrustProxy, err = getBool("TRUST_PROXY", false); err != nil {
 		return Config{}, err
 	}
+
 	if cfg.RateLimitPerMinute, err = getInt("RATE_LIMIT_PER_MINUTE", 120); err != nil {
+		return Config{}, err
+	}
+
+	if cfg.DevicesRateLimitPerMinute, err = getInt("DEVICES_RATE_LIMIT_PER_MINUTE", 30); err != nil {
 		return Config{}, err
 	}
 

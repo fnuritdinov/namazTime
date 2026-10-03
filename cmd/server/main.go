@@ -102,7 +102,10 @@ func run(log *slog.Logger) error {
 	hijriRepo := hijrimonth.NewRepository(db)
 	scheduleSvc := schedule.NewService(cityRepo, officialRepo, hijriRepo)
 	hijriSvc := hijrimonth.NewService(hijriRepo)
-	deviceSvc := device.NewService(device.NewRepository(db))
+
+	deviceRepo := device.NewRepository(db)
+	deviceSvc := device.NewService(deviceRepo)
+	go device.RunCleanup(ctx, deviceRepo, 12, 24*time.Hour, log)
 
 	// 4. API из openapi.yaml — один раз, с префиксом /v1
 	api := handler.NewServer(cityRepo, scheduleSvc, hijriSvc, deviceSvc, handler.AppInfo{
@@ -132,8 +135,19 @@ func run(log *slog.Logger) error {
 		{Prefix: "/v1/ramadan", MaxAge: time.Hour},
 		{Prefix: "/v1/hijri", MaxAge: time.Hour},
 	})
-	limit := ratelimit.Middleware(ratelimit.RedisCounter{RDB: rdb}, ratelimit.Options{
+	counter := ratelimit.RedisCounter{RDB: rdb}
+	limit := ratelimit.Middleware(counter, ratelimit.Options{
+		Name:       "all",
 		Limit:      cfg.RateLimitPerMinute,
+		Window:     time.Minute,
+		TrustProxy: cfg.TrustProxy,
+		RequestID:  handler.RequestIDFrom,
+		Log:        log,
+	})
+	limitDevices := ratelimit.Middleware(counter, ratelimit.Options{
+		Name:       "devices",
+		Prefix:     "/v1/devices",
+		Limit:      cfg.DevicesRateLimitPerMinute,
 		Window:     time.Minute,
 		TrustProxy: cfg.TrustProxy,
 		RequestID:  handler.RequestIDFrom,
@@ -144,9 +158,8 @@ func run(log *slog.Logger) error {
 
 	// 5. HTTP-сервер
 	srv := &http.Server{
-		Addr:              ":" + cfg.HTTPPort,
-		Handler:           handler.RequestID(logRequests(limit(http.MaxBytesHandler(compress.Gzip(cache(deviceAuth(mux))), 64<<10)))),
-		ReadHeaderTimeout: 5 * time.Second,
+		Addr:    ":" + cfg.HTTPPort,
+		Handler: handler.RequestID(logRequests(limit(limitDevices(http.MaxBytesHandler(compress.Gzip(cache(deviceAuth(mux))), 64<<10))))), ReadHeaderTimeout: 5 * time.Second,
 	}
 
 	errCh := make(chan error, 1)

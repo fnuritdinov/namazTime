@@ -31,7 +31,7 @@ func TestLoad_Defaults(t *testing.T) {
 	if cfg.MinAppVersion != "1.0.0" || cfg.FeatureSync || cfg.ContentVersions["cities"] != 1 {
 		t.Errorf("%+v", cfg)
 	}
-
+	
 	t.Setenv("FEATURE_SYNC", "yes")
 	if _, err := Load(); err == nil {
 		t.Error("FEATURE_SYNC=yes должно быть ошибкой (только true/false)")

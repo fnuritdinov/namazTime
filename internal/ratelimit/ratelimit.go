@@ -1,7 +1,8 @@
 // Package ratelimit — ограничение числа запросов с одного IP (§16 ТЗ: 120 в минуту).
 //
 // Алгоритм «фиксированное окно»: на каждую минуту у IP свой счётчик в Redis.
-// Ключ "rl:1.2.3.4:29345678" живёт чуть дольше минуты и удаляется сам.
+// Ключ "rl:all:1.2.3.4:29345678" живёт чуть дольше минуты и удаляется сам.
+// Лимитов может быть несколько (общий и строже для /v1/devices) — у каждого своё имя в ключе.
 package ratelimit
 
 import (
@@ -43,6 +44,8 @@ func (c RedisCounter) Incr(ctx context.Context, key string, ttl time.Duration) (
 }
 
 type Options struct {
+	Name       string                           // имя лимита в ключе Redis: "all", "devices"
+	Prefix     string                           // "" — все пути; "/v1/devices" — только они
 	Limit      int                              // запросов в окно
 	Window     time.Duration                    // длина окна, обычно минута
 	TrustProxy bool                             // брать IP из X-Forwarded-For (только за своим прокси/CDN!)
@@ -59,9 +62,13 @@ func Middleware(counter Counter, opt Options) func(http.Handler) http.Handler {
 	}
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if !strings.HasPrefix(r.URL.Path, opt.Prefix) {
+				next.ServeHTTP(w, r)
+				return
+			}
 			now := opt.Now()
 			window := now.Unix() / int64(opt.Window.Seconds())
-			key := fmt.Sprintf("rl:%s:%d", clientIP(r, opt.TrustProxy), window)
+			key := fmt.Sprintf("rl:%s:%s:%d", opt.Name, clientIP(r, opt.TrustProxy), window)
 
 			n, err := counter.Incr(r.Context(), key, opt.Window+10*time.Second)
 			if err != nil {

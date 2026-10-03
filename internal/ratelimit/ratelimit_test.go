@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"testing"
 	"time"
 )
@@ -90,3 +91,34 @@ func TestClientIP(t *testing.T) {
 		t.Errorf("with proxy: %s, want last address", got)
 	}
 }
+func TestPrefix(t *testing.T) {
+	now := time.Date(2026, 10, 3, 12, 0, 10, 0, time.UTC)
+	counter := &memCounter{counts: map[string]int64{}}
+	ok := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) })
+	h := Middleware(counter, Options{
+		Name: "devices", Prefix: "/v1/devices", Limit: 1, Window: time.Minute,
+		Log: slog.New(slog.DiscardHandler), Now: func() time.Time { return now },
+	})(ok)
+
+	do := func(path string) int {
+		req := httptest.NewRequest("POST", path, nil)
+		req.RemoteAddr = "1.1.1.1:5000"
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+		return rec.Code
+	}
+	if do("/v1/devices") != 200 || do("/v1/devices") != http.StatusTooManyRequests {
+		t.Error("second /v1/devices request must be limited")
+	}
+	// Другие пути этот лимит не трогает
+	for i := 0; i < 5; i++ {
+		if code := do("/v1/cities"); code != 200 {
+			t.Fatalf("/v1/cities: %d", code)
+		}
+	}
+	if _, ok := counter.counts["rl:devices:1.1.1.1:"+itoaWindow(now)]; !ok {
+		t.Errorf("key must contain limit name, got %v", counter.counts)
+	}
+}
+
+func itoaWindow(t time.Time) string { return strconv.FormatInt(t.Unix()/60, 10) }
