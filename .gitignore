@@ -1,22 +1,24 @@
-.env.example
-
+# Секреты — не коммитить никогда
+.env
+.env.prod
 certs/*.crt
 
+# Шаблоны секретов — коммитить (в них нет настоящих паролей)
+!.env.example
+!.env.prod.example
+
+# Редакторы и система
 .idea/
-.vscodee/
-
-/server
-*.exe
-
-*.log
-tmp/
-
+.vscode/
 .DS_Store
 Thumbs.db
 
-vendor/
+# Сборка и временные файлы
+/server
+*.exe
+*.log
+tmp/
 
+# Данные, которые не храним в git
 data/quran/
-
-.env.prod
 backups/
