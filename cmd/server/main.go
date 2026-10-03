@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"nTime/internal/accesslog"
 	"nTime/internal/compress"
+	"nTime/internal/daily"
 	"nTime/internal/device"
 	"nTime/internal/hijrimonth"
 	"nTime/internal/httpcache"
@@ -105,10 +106,11 @@ func run(log *slog.Logger) error {
 
 	deviceRepo := device.NewRepository(db)
 	deviceSvc := device.NewService(deviceRepo)
+	dailySvc := daily.NewService(daily.NewRepository(db))
 	go device.RunCleanup(ctx, deviceRepo, 12, 24*time.Hour, log)
 
 	// 4. API из openapi.yaml — один раз, с префиксом /v1
-	api := handler.NewServer(cityRepo, scheduleSvc, hijriSvc, deviceSvc, handler.AppInfo{
+	api := handler.NewServer(cityRepo, scheduleSvc, hijriSvc, deviceSvc, dailySvc, handler.AppInfo{
 		MinSupportedVersion: cfg.MinAppVersion,
 		LatestVersion:       cfg.LatestAppVersion,
 		SupportURL:          cfg.SupportURL,
@@ -134,6 +136,7 @@ func run(log *slog.Logger) error {
 		{Prefix: "/v1/calculation-methods", MaxAge: 24 * time.Hour},
 		{Prefix: "/v1/ramadan", MaxAge: time.Hour},
 		{Prefix: "/v1/hijri", MaxAge: time.Hour},
+		{Prefix: "/v1/daily", MaxAge: time.Hour},
 	})
 	counter := ratelimit.RedisCounter{RDB: rdb}
 	limit := ratelimit.Middleware(counter, ratelimit.Options{

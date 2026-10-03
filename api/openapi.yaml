@@ -25,6 +25,7 @@ tags:
   - name: prayer
   - name: hijri
   - name: device
+  - name: daily
 
 paths:
   /config:
@@ -350,6 +351,49 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/Internal"
+
+  /daily:
+    get:
+      tags: [ daily ]
+      operationId: getDaily
+      summary: Аят дня и напоминание дня
+      description: |
+        Одинаково для всех пользователей в этот день. Без параметров — сегодня (UTC).
+        Приложение может взять неделю вперёд (from/to), чтобы уведомление работало офлайн.
+        Хадис дня появится во второй итерации.
+      parameters:
+        - name: date
+          in: query
+          required: false
+          description: Один день (вместо from/to)
+          schema:
+            type: string
+            format: date
+            example: "2026-10-03"
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          required: false
+          description: Не больше 31 дня от from
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Контент по дням
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DailyList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "500":
           $ref: "#/components/responses/Internal"
 
@@ -888,6 +932,48 @@ components:
           items:
             type: string
           example: [ ramadan-TJ, eid-TJ, announcements ]
+
+    # ---------- Контент дня ----------
+    AyahRef:
+      type: object
+      required: [ surah, ayah ]
+      properties:
+        surah:
+          type: integer
+          example: 2
+        ayah:
+          type: integer
+          example: 255
+
+    DailyAyah:
+      type: object
+      required: [ ref ]
+      description: Ссылка на аят; текст и перевод приложение берёт из своего Корана
+      properties:
+        ref:
+          $ref: "#/components/schemas/AyahRef"
+
+    Daily:
+      type: object
+      required: [ date ]
+      properties:
+        date:
+          type: string
+          format: date
+          example: "2026-10-03"
+        ayah:
+          $ref: "#/components/schemas/DailyAyah"
+        reminder:
+          $ref: "#/components/schemas/LocalizedString"
+
+    DailyList:
+      type: object
+      required: [ items ]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Daily"
 
     # ---------- Ошибки ----------
     ErrorCode:

@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"nTime/internal/daily"
 	"nTime/internal/device"
 	"nTime/internal/hijrimonth"
 	"nTime/internal/schedule"
@@ -13,12 +14,13 @@ type Server struct {
 	schedule *schedule.Service
 	hijri    *hijrimonth.Service
 	devices  *device.Service
+	daily    *daily.Service
 	app      AppInfo
 }
 
 func NewServer(cityRepo *city.Repository, scheduleSvc *schedule.Service, hijriSvc *hijrimonth.Service,
-	deviceSvc *device.Service, app AppInfo) *Server {
-	return &Server{cities: cityRepo, schedule: scheduleSvc, hijri: hijriSvc, devices: deviceSvc, app: app}
+	deviceSvc *device.Service, dailySvc *daily.Service, app AppInfo) *Server {
+	return &Server{cities: cityRepo, schedule: scheduleSvc, hijri: hijriSvc, devices: deviceSvc, daily: dailySvc, app: app}
 }
 
 var _ StrictServerInterface = (*Server)(nil)
