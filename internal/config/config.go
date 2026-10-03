@@ -19,6 +19,9 @@ type Config struct {
 	FeatureSync        bool           // FEATURE_SYNC
 	FeatureQuranSearch bool           // FEATURE_QURAN_SEARCH
 	ContentVersions    map[string]int // CONTENT_VERSIONS="cities=1,quran=3"
+	// Защита (§16 ТЗ)
+	RateLimitPerMinute int  // RATE_LIMIT_PER_MINUTE — запросов в минуту с одного IP
+	TrustProxy         bool // TRUST_PROXY — сервер за своим nginx/CDN, IP брать из X-Forwarded-For
 }
 
 func Load() (Config, error) {
@@ -41,6 +44,14 @@ func Load() (Config, error) {
 	if cfg.FeatureQuranSearch, err = getBool("FEATURE_QURAN_SEARCH", false); err != nil {
 		return Config{}, err
 	}
+
+	if cfg.TrustProxy, err = getBool("TRUST_PROXY", false); err != nil {
+		return Config{}, err
+	}
+	if cfg.RateLimitPerMinute, err = getInt("RATE_LIMIT_PER_MINUTE", 120); err != nil {
+		return Config{}, err
+	}
+
 	if cfg.ContentVersions, err = parseVersions(getEnv("CONTENT_VERSIONS", "cities=1")); err != nil {
 		return Config{}, fmt.Errorf("CONTENT_VERSIONS: %w", err)
 	}
@@ -64,6 +75,18 @@ func getBool(key string, def bool) (bool, error) {
 		return false, fmt.Errorf("%s must be true or false, got %q", key, v)
 	}
 	return b, nil
+}
+
+func getInt(key string, def int) (int, error) {
+	v := os.Getenv(key)
+	if v == "" {
+		return def, nil
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil || n <= 0 {
+		return 0, fmt.Errorf("%s must be a positive number, got %q", key, v)
+	}
+	return n, nil
 }
 
 // parseVersions разбирает "cities=1,quran=3" → {"cities": 1, "quran": 3}.

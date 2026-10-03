@@ -6,9 +6,12 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"nTime/internal/accesslog"
+	"nTime/internal/compress"
 	"nTime/internal/hijrimonth"
 	"nTime/internal/httpcache"
 	"nTime/internal/official"
+	"nTime/internal/ratelimit"
 	"net/http"
 	"os"
 	"os/signal"
@@ -127,11 +130,19 @@ func run(log *slog.Logger) error {
 		{Prefix: "/v1/ramadan", MaxAge: time.Hour},
 		{Prefix: "/v1/hijri", MaxAge: time.Hour},
 	})
+	limit := ratelimit.Middleware(ratelimit.RedisCounter{RDB: rdb}, ratelimit.Options{
+		Limit:      cfg.RateLimitPerMinute,
+		Window:     time.Minute,
+		TrustProxy: cfg.TrustProxy,
+		RequestID:  handler.RequestIDFrom,
+		Log:        log,
+	})
+	logRequests := accesslog.Middleware(log, handler.RequestIDFrom)
 
 	// 5. HTTP-сервер
 	srv := &http.Server{
 		Addr:              ":" + cfg.HTTPPort,
-		Handler:           handler.RequestID(cache(mux)),
+		Handler:           handler.RequestID(logRequests(limit(compress.Gzip(cache(mux))))),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
