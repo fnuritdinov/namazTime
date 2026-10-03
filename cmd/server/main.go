@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"nTime/internal/accesslog"
 	"nTime/internal/compress"
+	"nTime/internal/device"
 	"nTime/internal/hijrimonth"
 	"nTime/internal/httpcache"
 	"nTime/internal/official"
@@ -101,9 +102,10 @@ func run(log *slog.Logger) error {
 	hijriRepo := hijrimonth.NewRepository(db)
 	scheduleSvc := schedule.NewService(cityRepo, officialRepo, hijriRepo)
 	hijriSvc := hijrimonth.NewService(hijriRepo)
+	deviceSvc := device.NewService(device.NewRepository(db))
 
 	// 4. API из openapi.yaml — один раз, с префиксом /v1
-	api := handler.NewServer(cityRepo, scheduleSvc, hijriSvc, handler.AppInfo{
+	api := handler.NewServer(cityRepo, scheduleSvc, hijriSvc, deviceSvc, handler.AppInfo{
 		MinSupportedVersion: cfg.MinAppVersion,
 		LatestVersion:       cfg.LatestAppVersion,
 		SupportURL:          cfg.SupportURL,
@@ -138,11 +140,12 @@ func run(log *slog.Logger) error {
 		Log:        log,
 	})
 	logRequests := accesslog.Middleware(log, handler.RequestIDFrom)
+	deviceAuth := device.Auth(deviceSvc, "/v1/devices/me", handler.RequestIDFrom, log)
 
 	// 5. HTTP-сервер
 	srv := &http.Server{
 		Addr:              ":" + cfg.HTTPPort,
-		Handler:           handler.RequestID(logRequests(limit(compress.Gzip(cache(mux))))),
+		Handler:           handler.RequestID(logRequests(limit(http.MaxBytesHandler(compress.Gzip(cache(deviceAuth(mux))), 64<<10)))),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 

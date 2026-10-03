@@ -24,6 +24,7 @@ tags:
   - name: cities
   - name: prayer
   - name: hijri
+  - name: device
 
 paths:
   /config:
@@ -285,7 +286,79 @@ paths:
         "500":
           $ref: "#/components/responses/Internal"
 
+  /devices:
+    post:
+      tags: [ devices ]
+      operationId: registerDevice
+      summary: Регистрация анонимного устройства → токен
+      description: |
+        Без email, телефона и пароля. Токен приложение хранит в Keychain
+        и передаёт в заголовке Authorization: Bearer <token>.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeviceRegistration"
+      responses:
+        "201":
+          description: Устройство создано
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceCreated"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/Internal"
+
+  /devices/me:
+    delete:
+      tags: [ devices ]
+      operationId: deleteDevice
+      summary: Удалить устройство и все его данные
+      security:
+        - deviceToken: [ ]
+      responses:
+        "204":
+          description: Удалено
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/Internal"
+
+  /devices/me/push:
+    put:
+      tags: [ devices ]
+      operationId: setDevicePush
+      summary: APNs-токен и подписки на темы
+      description: |
+        Темы: ramadan-{country}, eid-{country}, announcements.
+        Push на каждый намаз не отправляется — это локальные уведомления приложения.
+      security:
+        - deviceToken: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PushSettings"
+      responses:
+        "204":
+          description: Сохранено
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/Internal"
+
 components:
+  securitySchemes:
+    deviceToken:
+      type: http
+      scheme: bearer
+      description: Токен из POST /v1/devices
   parameters:
     AcceptLanguage:
       name: Accept-Language
@@ -766,6 +839,56 @@ components:
           items:
             $ref: "#/components/schemas/DailyReminder"
 
+    # ---------- Устройства и push ----------
+    DeviceRegistration:
+      type: object
+      required: [ platform, appVersion ]
+      properties:
+        platform:
+          type: string
+          enum: [ ios ]
+        appVersion:
+          type: string
+          example: 1.0.0
+        locale:
+          type: string
+          example: ru_TJ
+        timeZoneId:
+          type: string
+          example: Asia/Dushanbe
+        country:
+          type: string
+          pattern: "^[A-Z]{2}$"
+          example: TJ
+
+    DeviceCreated:
+      type: object
+      required: [ deviceId, token ]
+      properties:
+        deviceId:
+          type: string
+          example: dev_5f1c0a9e3b7d4c2a8e6f1b0d
+        token:
+          type: string
+          description: Секрет устройства. Показывается один раз, на сервере хранится только хэш.
+
+    PushSettings:
+      type: object
+      required: [ apnsToken, environment, topics ]
+      properties:
+        apnsToken:
+          type: string
+          description: Токен APNs (hex)
+        environment:
+          type: string
+          enum: [ production, sandbox ]
+        topics:
+          type: array
+          maxItems: 20
+          items:
+            type: string
+          example: [ ramadan-TJ, eid-TJ, announcements ]
+
     # ---------- Ошибки ----------
     ErrorCode:
       type: string
@@ -780,25 +903,23 @@ components:
 
     ErrorBody:
       type: object
-      required: [code, message, requestId]
+      required: [ code, message, requestId ]
       properties:
         code:
           $ref: "#/components/schemas/ErrorCode"
         message:
           type: string
-          example: Surah 115 does not exist
+          example: City not found
         details:
           type: object
           additionalProperties: true
-          example:
-            field: surah
         requestId:
           type: string
           example: 01J9ZK3M5Q8T2V4X6Y8Z0A1B2C
 
     Error:
       type: object
-      required: [error]
+      required: [ error ]
       properties:
         error:
           $ref: "#/components/schemas/ErrorBody"
@@ -812,6 +933,12 @@ components:
   responses:
     BadRequest:
       description: Неверный параметр (invalid_argument)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Unauthorized:
+      description: Нет или неверный токен устройства (unauthorized)
       content:
         application/json:
           schema:
