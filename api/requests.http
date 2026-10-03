@@ -1,0 +1,123 @@
+### Клиент API Namoz для GoLand.
+### Запуск: зелёная кнопка ▶ слева от запроса. Окружение (local / prod) — выпадающий список вверху.
+### Токен устройства сохраняется сам после «Регистрация устройства».
+
+### ---------- Служебное ----------
+
+### Жив ли сервер, Postgres и Redis
+GET {{baseUrl}}/health
+
+### ---------- Конфигурация ----------
+
+### Версии приложения, флаги, ближайший Рамадан
+GET {{baseUrl}}/v1/config
+X-App-Version: 1.0.0
+X-Platform: ios
+X-Device-Locale: ru_TJ
+
+> {%
+    client.test("200", () => client.assert(response.status === 200, "status " + response.status));
+    client.global.set("configEtag", response.headers.valueOf("ETag"));
+%}
+
+### Тот же запрос с ETag → 304 без тела (кеш работает)
+GET {{baseUrl}}/v1/config
+If-None-Match: {{configEtag}}
+
+> {%
+    client.test("304", () => client.assert(response.status === 304, "status " + response.status));
+%}
+
+### ---------- Города ----------
+
+### Поиск (с опечатками, на любом из 4 языков)
+GET {{baseUrl}}/v1/cities?query=Худж
+
+### Популярные города страны
+GET {{baseUrl}}/v1/cities?country=TJ&limit=5
+
+### Ближайший город по координатам (координаты не сохраняются)
+GET {{baseUrl}}/v1/cities/nearest?lat=38.56&lon=68.79
+
+### Один город
+GET {{baseUrl}}/v1/cities/dushanbe
+
+### Нет такого города → 404
+GET {{baseUrl}}/v1/cities/atlantis
+
+### ---------- Время намазов ----------
+
+### Методы расчёта
+GET {{baseUrl}}/v1/calculation-methods
+
+### Душанбе: официальное время Шуро
+GET {{baseUrl}}/v1/prayer-times?cityId=dushanbe&from=2026-10-01&to=2026-10-07
+
+### Худжанд: Шуро + поправка −3 минуты
+GET {{baseUrl}}/v1/prayer-times?cityId=khujand&from=2026-10-03&to=2026-10-03
+
+### Душанбе: принудительно расчёт по формуле
+GET {{baseUrl}}/v1/prayer-times?cityId=dushanbe&from=2026-10-03&to=2026-10-03&source=calculated&method=muslimWorldLeague&madhab=hanafi
+
+### По координатам (Москва), только расчёт
+GET {{baseUrl}}/v1/prayer-times?lat=55.7558&lon=37.6173&timeZoneId=Europe/Moscow&from=2026-10-03&to=2026-10-03
+
+### Официальной таблицы на эти даты нет → 422
+GET {{baseUrl}}/v1/prayer-times?cityId=dushanbe&from=2026-12-01&to=2026-12-01&source=official
+
+### ---------- Хиджра и Рамадан ----------
+
+### Начала месяцев хиджры 1448 в Таджикистане
+GET {{baseUrl}}/v1/hijri/months?country=TJ&year=1448
+
+### Рамадан 1448 (404, если дат ещё нет)
+GET {{baseUrl}}/v1/ramadan/1448?country=TJ
+
+### ---------- Контент дня ----------
+
+### Сегодня
+GET {{baseUrl}}/v1/daily
+
+### Неделя вперёд (так приложение готовит уведомления на офлайн)
+GET {{baseUrl}}/v1/daily?from=2026-10-03&to=2026-10-09
+
+### ---------- Устройства и push ----------
+
+### Регистрация устройства → токен сохраняется в deviceToken
+POST {{baseUrl}}/v1/devices
+Content-Type: application/json
+
+{
+  "platform": "ios",
+  "appVersion": "1.0.0",
+  "locale": "ru_TJ",
+  "timeZoneId": "Asia/Dushanbe",
+  "country": "TJ"
+}
+
+> {%
+    client.test("201", () => client.assert(response.status === 201, "status " + response.status));
+    client.global.set("deviceToken", response.body.token);
+    client.log("deviceId: " + response.body.deviceId);
+%}
+
+### Подписка на Рамадан и Ид в Таджикистане (APNs-токен тестовый)
+PUT {{baseUrl}}/v1/devices/me/push
+Authorization: Bearer {{deviceToken}}
+Content-Type: application/json
+
+{
+  "apnsToken": "abababababababababababababababababababababababababababababababab",
+  "environment": "sandbox",
+  "topics": ["ramadan-TJ", "eid-TJ", "announcements"]
+}
+
+### Без токена → 401
+PUT {{baseUrl}}/v1/devices/me/push
+Content-Type: application/json
+
+{}
+
+### Удалить устройство и все его данные
+DELETE {{baseUrl}}/v1/devices/me
+Authorization: Bearer {{deviceToken}}
