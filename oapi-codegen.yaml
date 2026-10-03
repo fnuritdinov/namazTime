@@ -3,6 +3,6 @@ package: handler
 output: internal/handler/api.gen.go
 generate:
   models: true
-  std-http-server: true
+  gin-server: true
   strict-server: true
   embedded-spec: true

@@ -2,18 +2,8 @@ package main
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
 	"fmt"
 	"log/slog"
-	"nTime/internal/accesslog"
-	"nTime/internal/compress"
-	"nTime/internal/daily"
-	"nTime/internal/device"
-	"nTime/internal/hijrimonth"
-	"nTime/internal/httpcache"
-	"nTime/internal/official"
-	"nTime/internal/ratelimit"
 	"net/http"
 	"os"
 	"os/signal"
@@ -21,14 +11,8 @@ import (
 	"time"
 	_ "time/tzdata" // база часовых поясов внутри бинарника (+~450 КБ)
 
-	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/redis/go-redis/v9"
-
-	"nTime/internal/city"
 	"nTime/internal/config"
-	"nTime/internal/handler"
-	"nTime/internal/schedule"
-	"nTime/internal/storage"
+	"nTime/internal/device"
 )
 
 func main() {
@@ -40,146 +24,43 @@ func main() {
 	}
 }
 
+// run — сценарий запуска сервера сверху вниз.
 func run(log *slog.Logger) error {
 	cfg, err := config.Load()
 	if err != nil {
 		return fmt.Errorf("config: %w", err)
 	}
 
+	// ctx отменится по Ctrl+C или docker stop — тогда сервер мягко остановится
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	// Postgres
-	db, err := pgxpool.New(ctx, cfg.DatabaseURL)
+	// 1. Инфраструктура
+	db, err := openPostgres(ctx, cfg.DatabaseURL, log)
 	if err != nil {
-		return fmt.Errorf("pgxpool.New: %w", err)
-	}
-	defer db.Close()
-	if err := db.Ping(ctx); err != nil {
-		return fmt.Errorf("postgres ping: %w", err)
-	}
-	log.Info("connected to postgres")
-
-	if err := storage.Migrate(cfg.DatabaseURL); err != nil {
-		return fmt.Errorf("migrate: %w", err)
-	}
-	log.Info("migrations applied")
-
-	// Redis — кеш: должен отвечать быстро или не отвечать вовсе
-	rdb := redis.NewClient(&redis.Options{
-		Addr:         cfg.RedisAddr,
-		DialTimeout:  200 * time.Millisecond,
-		ReadTimeout:  200 * time.Millisecond,
-		WriteTimeout: 200 * time.Millisecond,
-		MaxRetries:   1,
-	})
-	defer rdb.Close()
-	if err := rdb.Ping(ctx).Err(); err != nil {
-		return fmt.Errorf("redis ping: %w", err)
-	}
-	log.Info("connected to redis")
-
-	// 1. Роутер
-	mux := http.NewServeMux()
-
-	// 2. Служебный health check
-	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
-		status := map[string]string{"status": "ok", "postgres": "ok", "redis": "ok"}
-		code := http.StatusOK
-		if err := db.Ping(r.Context()); err != nil {
-			status["postgres"], status["status"], code = "down", "degraded", http.StatusServiceUnavailable
-		}
-		if err := rdb.Ping(r.Context()).Err(); err != nil {
-			status["redis"], status["status"], code = "down", "degraded", http.StatusServiceUnavailable
-		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(code)
-		json.NewEncoder(w).Encode(status)
-	})
-
-	// 3. Зависимости
-	cityRepo := city.NewRepository(db)
-	officialRepo := official.NewRepository(db)
-	hijriRepo := hijrimonth.NewRepository(db)
-	scheduleSvc := schedule.NewService(cityRepo, officialRepo, hijriRepo)
-	hijriSvc := hijrimonth.NewService(hijriRepo)
-
-	deviceRepo := device.NewRepository(db)
-	deviceSvc := device.NewService(deviceRepo)
-	dailySvc := daily.NewService(daily.NewRepository(db))
-	go device.RunCleanup(ctx, deviceRepo, 12, 24*time.Hour, log)
-
-	// 4. API из openapi.yaml — один раз, с префиксом /v1
-	api := handler.NewServer(cityRepo, scheduleSvc, hijriSvc, deviceSvc, dailySvc, handler.AppInfo{
-		MinSupportedVersion: cfg.MinAppVersion,
-		LatestVersion:       cfg.LatestAppVersion,
-		SupportURL:          cfg.SupportURL,
-		FeatureSync:         cfg.FeatureSync,
-		FeatureQuranSearch:  cfg.FeatureQuranSearch,
-		ContentVersions:     cfg.ContentVersions,
-	})
-	strictHandler := handler.NewStrictHandlerWithOptions(api, nil, handler.StrictHTTPServerOptions{
-		RequestErrorHandlerFunc:  handler.RequestErrorHandler,
-		ResponseErrorHandlerFunc: handler.InternalErrorHandler(log),
-	})
-	handler.HandlerWithOptions(strictHandler, handler.StdHTTPServerOptions{
-		BaseURL:          "/v1",
-		BaseRouter:       mux,
-		ErrorHandlerFunc: handler.RequestErrorHandler,
-	})
-
-	// 5. HTTP-кеширование по ТЗ (§2.5): расписания — 1 час, справочники — сутки
-	cache := httpcache.Middleware([]httpcache.Rule{
-		{Prefix: "/v1/prayer-times", MaxAge: time.Hour},
-		{Prefix: "/v1/config", MaxAge: time.Hour},
-		{Prefix: "/v1/cities", MaxAge: 24 * time.Hour},
-		{Prefix: "/v1/calculation-methods", MaxAge: 24 * time.Hour},
-		{Prefix: "/v1/ramadan", MaxAge: time.Hour},
-		{Prefix: "/v1/daily", MaxAge: time.Hour},
-	})
-	counter := ratelimit.RedisCounter{RDB: rdb}
-	limit := ratelimit.Middleware(counter, ratelimit.Options{
-		Name:       "all",
-		Limit:      cfg.RateLimitPerMinute,
-		Window:     time.Minute,
-		TrustProxy: cfg.TrustProxy,
-		RequestID:  handler.RequestIDFrom,
-		Log:        log,
-	})
-	limitDevices := ratelimit.Middleware(counter, ratelimit.Options{
-		Name:       "devices",
-		Prefix:     "/v1/devices",
-		Limit:      cfg.DevicesRateLimitPerMinute,
-		Window:     time.Minute,
-		TrustProxy: cfg.TrustProxy,
-		RequestID:  handler.RequestIDFrom,
-		Log:        log,
-	})
-	logRequests := accesslog.Middleware(log, handler.RequestIDFrom)
-	deviceAuth := device.Auth(deviceSvc, "/v1/devices/me", handler.RequestIDFrom, log)
-
-	// 5. HTTP-сервер
-	srv := &http.Server{
-		Addr:    ":" + cfg.HTTPPort,
-		Handler: handler.RequestID(logRequests(limit(limitDevices(http.MaxBytesHandler(compress.Gzip(cache(deviceAuth(mux))), 64<<10))))), ReadHeaderTimeout: 5 * time.Second,
-	}
-
-	errCh := make(chan error, 1)
-	go func() {
-		log.Info("http server started", "port", cfg.HTTPPort)
-		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			errCh <- err
-		}
-	}()
-
-	select {
-	case <-ctx.Done():
-		log.Info("shutting down")
-	case err := <-errCh:
 		return err
 	}
+	defer db.Close()
 
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	return srv.Shutdown(shutdownCtx)
+	rdb, err := openRedis(ctx, cfg.RedisAddr, log)
+	if err != nil {
+		return err
+	}
+	defer rdb.Close()
+
+	// 2. Сервисы и API
+	app := newApp(db, cfg)
+	go device.RunCleanup(ctx, app.deviceRepo, 12, 24*time.Hour, log)
+
+	// 3. Адреса и фильтры
+	router := newRouter(app.api, db, rdb, log)
+	handler := withMiddleware(router, cfg, rdb, app.devices, log)
+
+	// 4. Сервер
+	srv := &http.Server{
+		Addr:              ":" + cfg.HTTPPort,
+		Handler:           handler,
+		ReadHeaderTimeout: 5 * time.Second,
+	}
+	return serve(ctx, srv, log)
 }
