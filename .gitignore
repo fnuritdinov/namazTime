@@ -17,3 +17,6 @@ Thumbs.db
 vendor/
 
 data/quran/
+
+.env.prod
+backups/

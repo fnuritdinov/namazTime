@@ -1,0 +1,92 @@
+# Боевой запуск на VPS:
+#   docker compose -f docker-compose.prod.yaml --env-file .env.prod up -d --build
+#
+# Наружу открыт только Caddy (80 и 443). Postgres и Redis доступны только внутри Docker,
+# Postgres ещё и на 127.0.0.1 сервера — для утилит администратора через SSH-туннель.
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data      # сертификаты Let's Encrypt — не терять, иначе лимит на выпуск
+      - caddy-config:/config
+    depends_on:
+      - app
+
+  app:
+    build: .
+    restart: unless-stopped
+    environment:
+      HTTP_PORT: "8080"
+      DATABASE_URL: postgres://namaz:${POSTGRES_PASSWORD}@postgres:5432/namaz?sslmode=disable
+      REDIS_ADDR: redis:6379
+      TRUST_PROXY: "true"     # IP клиента берём из X-Forwarded-For, который ставит Caddy
+      APP_MIN_VERSION: ${APP_MIN_VERSION:-1.0.0}
+      APP_LATEST_VERSION: ${APP_LATEST_VERSION:-1.0.0}
+      CONTENT_VERSIONS: ${CONTENT_VERSIONS:-cities=1}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: namaz
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?задайте POSTGRES_PASSWORD в .env.prod}
+      POSTGRES_DB: namaz
+    ports:
+      - "127.0.0.1:5432:5432" # только для самого сервера, из интернета не виден
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U namaz -d namaz"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no"] # счётчики лимита хранить на диске не нужно
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Резервная копия базы раз в сутки, хранятся последние 14 дней
+  backup:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ./backups:/backups
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -o pipefail
+        while true; do
+          f=/backups/namaz-$$(date +%Y-%m-%d).sql.gz
+          pg_dump -h postgres -U namaz namaz | gzip > "$$f.part" && mv "$$f.part" "$$f" && echo "backup ok: $$f"
+          find /backups -name 'namaz-*.sql.gz' -mtime +14 -delete
+          sleep 86400
+        done
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pg-data:
+  caddy-data:
+  caddy-config:

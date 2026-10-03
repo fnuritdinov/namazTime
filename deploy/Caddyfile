@@ -1,0 +1,12 @@
+# Caddy сам получает и продлевает HTTPS-сертификат Let's Encrypt для домена.
+# Журнал запросов здесь НЕ включён специально: в нём были бы lat/lon (§16 ТЗ).
+# Свой журнал без координат пишет приложение.
+
+{$DOMAIN} {
+	reverse_proxy app:8080
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		-Server
+	}
+}
