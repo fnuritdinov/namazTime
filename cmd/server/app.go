@@ -5,7 +5,6 @@ import (
 
 	"nTime/internal/city"
 	"nTime/internal/config"
-	"nTime/internal/daily"
 	"nTime/internal/device"
 	"nTime/internal/handler"
 	"nTime/internal/hijrimonth"
@@ -30,9 +29,8 @@ func newApp(db *pgxpool.Pool, cfg config.Config) app {
 	scheduleSvc := schedule.NewService(cityRepo, officialRepo, hijriRepo)
 	hijriSvc := hijrimonth.NewService(hijriRepo)
 	deviceSvc := device.NewService(deviceRepo)
-	dailySvc := daily.NewService(daily.NewRepository(db))
 
-	api := handler.NewServer(cityRepo, scheduleSvc, hijriSvc, deviceSvc, dailySvc, handler.AppInfo{
+	api := handler.NewServer(cityRepo, scheduleSvc, hijriSvc, deviceSvc, handler.AppInfo{
 		MinSupportedVersion: cfg.MinAppVersion,
 		LatestVersion:       cfg.LatestAppVersion,
 		SupportURL:          cfg.SupportURL,

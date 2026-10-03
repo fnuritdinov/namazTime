@@ -52,7 +52,6 @@ func (s *Server) GetRamadan(ctx context.Context, req GetRamadanRequestObject) (G
 		LaylatAlQadrExpected: &laylat,
 		ConfirmedAt:          r.ConfirmedAt,
 		Duas:                 duas,
-		DailyReminders:       []DailyReminder{}, // напоминания по дням добавим позже
 	}
 	if len(r.SourceName) > 0 {
 		name := toLocalized(r.SourceName)

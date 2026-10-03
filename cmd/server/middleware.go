@@ -21,7 +21,6 @@ var cacheRules = []httpcache.Rule{
 	{Prefix: "/v1/prayer-times", MaxAge: time.Hour},
 	{Prefix: "/v1/config", MaxAge: time.Hour},
 	{Prefix: "/v1/ramadan", MaxAge: time.Hour},
-	{Prefix: "/v1/daily", MaxAge: time.Hour},
 	{Prefix: "/v1/cities", MaxAge: 24 * time.Hour},
 	{Prefix: "/v1/calculation-methods", MaxAge: 24 * time.Hour},
 }
