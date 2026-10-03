@@ -72,14 +72,6 @@ func (r *Repository) SetPush(ctx context.Context, deviceID string, p Push) error
 	return tx.Commit(ctx)
 }
 
-func (r *Repository) Delete(ctx context.Context, deviceID string) error {
-	// device_push удалится сам: ON DELETE CASCADE
-	if _, err := r.db.Exec(ctx, `DELETE FROM devices WHERE id = $1`, deviceID); err != nil {
-		return fmt.Errorf("delete device: %w", err)
-	}
-	return nil
-}
-
 // DeleteInactive удаляет устройства, не заходившие с before. Подписки уйдут каскадом.
 func (r *Repository) DeleteInactive(ctx context.Context, before time.Time) (int64, error) {
 	tag, err := r.db.Exec(ctx, `DELETE FROM devices WHERE last_seen_at < $1`, before)

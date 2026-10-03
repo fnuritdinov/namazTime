@@ -65,10 +65,7 @@ GET {{baseUrl}}/v1/prayer-times?lat=55.7558&lon=37.6173&timeZoneId=Europe/Moscow
 ### Официальной таблицы на эти даты нет → 422
 GET {{baseUrl}}/v1/prayer-times?cityId=dushanbe&from=2026-12-01&to=2026-12-01&source=official
 
-### ---------- Хиджра и Рамадан ----------
-
-### Начала месяцев хиджры 1448 в Таджикистане
-GET {{baseUrl}}/v1/hijri/months?country=TJ&year=1448
+### ---------- Рамадан ----------
 
 ### Рамадан 1448 (404, если дат ещё нет)
 GET {{baseUrl}}/v1/ramadan/1448?country=TJ
@@ -118,6 +115,3 @@ Content-Type: application/json
 
 {}
 
-### Удалить устройство и все его данные
-DELETE {{baseUrl}}/v1/devices/me
-Authorization: Bearer {{deviceToken}}

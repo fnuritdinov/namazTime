@@ -33,15 +33,6 @@ func (m *memStore) SetPush(_ context.Context, id string, p Push) error {
 	return nil
 }
 
-func (m *memStore) Delete(_ context.Context, id string) error {
-	for h, v := range m.byHash {
-		if v == id {
-			delete(m.byHash, h)
-		}
-	}
-	return nil
-}
-
 const apns = "a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90"
 
 func TestRegisterAndAuthenticate(t *testing.T) {
@@ -74,12 +65,7 @@ func TestRegisterAndAuthenticate(t *testing.T) {
 	if token2 == token {
 		t.Error("tokens must be unique")
 	}
-
-	// После удаления токен не работает
-	_ = svc.Delete(ctx, id)
-	if _, err := svc.Authenticate(ctx, token); !errors.Is(err, ErrUnauthorized) {
-		t.Errorf("deleted device still authenticates: %v", err)
-	}
+	
 }
 
 func TestRegister_Invalid(t *testing.T) {

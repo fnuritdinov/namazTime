@@ -259,34 +259,6 @@ paths:
         "500":
           $ref: "#/components/responses/Internal"
 
-  /hijri/months:
-    get:
-      tags: [hijri]
-      operationId: getHijriMonths
-      summary: Начала месяцев хиджры по стране (подтверждённые/ожидаемые)
-      parameters:
-        - $ref: "#/components/parameters/CountryRequired"
-        - name: year
-          in: query
-          required: true
-          description: Год хиджры
-          schema:
-            type: integer
-            minimum: 1400
-            maximum: 1600
-            example: 1448
-      responses:
-        "200":
-          description: Начала месяцев (только те, что известны)
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/HijriMonthList"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "500":
-          $ref: "#/components/responses/Internal"
-
   /devices:
     post:
       tags: [ devices ]
@@ -310,21 +282,6 @@ paths:
                 $ref: "#/components/schemas/DeviceCreated"
         "400":
           $ref: "#/components/responses/BadRequest"
-        "500":
-          $ref: "#/components/responses/Internal"
-
-  /devices/me:
-    delete:
-      tags: [ devices ]
-      operationId: deleteDevice
-      summary: Удалить устройство и все его данные
-      security:
-        - deviceToken: [ ]
-      responses:
-        "204":
-          description: Удалено
-        "401":
-          $ref: "#/components/responses/Unauthorized"
         "500":
           $ref: "#/components/responses/Internal"
 
@@ -784,31 +741,6 @@ components:
             $ref: "#/components/schemas/PrayerDay"
 
     # ---------- Хиджра и Рамадан ----------
-    HijriMonthStart:
-      type: object
-      required: [month, startDate, status]
-      properties:
-        month:
-          type: integer
-          minimum: 1
-          maximum: 12
-          example: 9
-        startDate:
-          type: string
-          format: date
-          example: "2027-02-08"
-        status:
-          $ref: "#/components/schemas/ConfirmationStatus"
-
-    HijriMonthList:
-      type: object
-      required: [items]
-      properties:
-        items:
-          type: array
-          items:
-            $ref: "#/components/schemas/HijriMonthStart"
-
     Dua:
       type: object
       required: [id, arabic, translations]

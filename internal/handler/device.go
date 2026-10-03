@@ -52,14 +52,6 @@ func (s *Server) SetDevicePush(ctx context.Context, req SetDevicePushRequestObje
 	return SetDevicePush204Response{}, nil
 }
 
-// DELETE /v1/devices/me
-func (s *Server) DeleteDevice(ctx context.Context, req DeleteDeviceRequestObject) (DeleteDeviceResponseObject, error) {
-	if err := s.devices.Delete(ctx, device.IDFrom(ctx)); err != nil {
-		return nil, err
-	}
-	return DeleteDevice204Response{}, nil
-}
-
 // deref — значение необязательного поля или "".
 func deref(p *string) string {
 	if p == nil {

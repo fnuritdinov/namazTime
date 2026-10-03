@@ -135,7 +135,6 @@ func run(log *slog.Logger) error {
 		{Prefix: "/v1/cities", MaxAge: 24 * time.Hour},
 		{Prefix: "/v1/calculation-methods", MaxAge: 24 * time.Hour},
 		{Prefix: "/v1/ramadan", MaxAge: time.Hour},
-		{Prefix: "/v1/hijri", MaxAge: time.Hour},
 		{Prefix: "/v1/daily", MaxAge: time.Hour},
 	})
 	counter := ratelimit.RedisCounter{RDB: rdb}

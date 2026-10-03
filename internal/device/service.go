@@ -17,7 +17,6 @@ type Store interface {
 	// Touch находит устройство по хэшу токена и обновляет last_seen_at; ErrUnauthorized, если нет.
 	Touch(ctx context.Context, tokenHash string) (deviceID string, err error)
 	SetPush(ctx context.Context, deviceID string, p Push) error
-	Delete(ctx context.Context, deviceID string) error
 }
 
 type Service struct {
@@ -97,11 +96,6 @@ func (s *Service) SetPush(ctx context.Context, deviceID string, p Push) error {
 	}
 	p.Topics = topics
 	return s.store.SetPush(ctx, deviceID, p)
-}
-
-// Delete удаляет устройство со всеми данными (право на удаление, §12.2 ТЗ).
-func (s *Service) Delete(ctx context.Context, deviceID string) error {
-	return s.store.Delete(ctx, deviceID)
 }
 
 // HashToken — SHA-256 токена в hex. Даже если базу украдут, токенами воспользоваться не смогут.
