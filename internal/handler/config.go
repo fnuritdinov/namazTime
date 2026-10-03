@@ -6,6 +6,8 @@ import (
 	"time"
 
 	openapi_types "github.com/oapi-codegen/runtime/types"
+
+	"nTime/internal/prayertime"
 )
 
 // У /config нет параметра страны — Рамадан показываем для основной аудитории.
@@ -43,7 +45,8 @@ func (s *Server) GetConfig(ctx context.Context, req GetConfigRequestObject) (Get
 			OfficialTimetables: true,
 			QuranSearch:        s.app.FeatureQuranSearch,
 		},
-		ContentVersions: versions,
+		ContentVersions:    versions,
+		CalculationMethods: calculationMethods(),
 		Ramadan: &RamadanSummary{
 			Status:    ConfirmationStatus(r.Status),
 			HijriYear: r.HijriYear,
@@ -51,4 +54,21 @@ func (s *Server) GetConfig(ctx context.Context, req GetConfigRequestObject) (Get
 		},
 		SupportUrl: s.app.SupportURL,
 	}, nil
+}
+
+// calculationMethods — 6 методов расчёта из пакета prayertime в формате API.
+func calculationMethods() []CalculationMethod {
+	items := make([]CalculationMethod, 0, len(prayertime.Methods))
+	for _, m := range prayertime.Methods {
+		items = append(items, CalculationMethod{
+			Id:        CalculationMethodId(m.ID),
+			Title:     toLocalized(m.Title),
+			FajrAngle: m.FajrAngle,
+			Isha: IshaRule{
+				Type:  IshaRuleType(m.Isha.Type),
+				Value: m.Isha.Value,
+			},
+		})
+	}
+	return items
 }

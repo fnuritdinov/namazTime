@@ -121,21 +121,6 @@ paths:
         "500":
           $ref: "#/components/responses/Internal"
 
-  /calculation-methods:
-    get:
-      tags: [prayer]
-      operationId: listCalculationMethods
-      summary: Методы расчёта времени намазов
-      responses:
-        "200":
-          description: Методы расчёта
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/CalculationMethodList"
-        "500":
-          $ref: "#/components/responses/Internal"
-
   /prayer-times:
     get:
       tags: [prayer]
@@ -422,8 +407,12 @@ components:
     # ---------- Конфигурация ----------
     Config:
       type: object
-      required: [minSupportedVersion, latestVersion, features, contentVersions, supportUrl]
+      required: [ minSupportedVersion, latestVersion, features, contentVersions, supportUrl, calculationMethods ]
       properties:
+        calculationMethods:
+          type: array
+          items:
+            $ref: "#/components/schemas/CalculationMethod"
         minSupportedVersion:
           type: string
           example: 1.0.0
@@ -584,15 +573,6 @@ components:
           example: 18
         isha:
           $ref: "#/components/schemas/IshaRule"
-
-    CalculationMethodList:
-      type: object
-      required: [items]
-      properties:
-        items:
-          type: array
-          items:
-            $ref: "#/components/schemas/CalculationMethod"
 
     # ---------- Время намазов ----------
     PrayerSourceParam:

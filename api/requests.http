@@ -47,9 +47,6 @@ GET {{baseUrl}}/v1/cities/atlantis
 
 ### ---------- Время намазов ----------
 
-### Методы расчёта
-GET {{baseUrl}}/v1/calculation-methods
-
 ### Душанбе: официальное время Шуро
 GET {{baseUrl}}/v1/prayer-times?cityId=dushanbe&from=2026-10-01&to=2026-10-07
 
