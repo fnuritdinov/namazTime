@@ -2,12 +2,14 @@ package handler
 
 import (
 	"context"
+	"log/slog"
 	"time"
 
 	openapi_types "github.com/oapi-codegen/runtime/types"
-
-	"nTime/internal/hijri"
 )
+
+// У /config нет параметра страны — Рамадан показываем для основной аудитории.
+const defaultCountry = "TJ"
 
 // AppInfo — настройки для /v1/config (заполняются в main из config.Config).
 type AppInfo struct {
@@ -26,7 +28,12 @@ func (s *Server) GetConfig(ctx context.Context, req GetConfigRequestObject) (Get
 		versions = map[string]int{} // в JSON — {}, а не null
 	}
 
-	year, start := hijri.NextRamadan(time.Now().UTC())
+	// Даты из базы (Шуро), иначе — расчёт. /config не должен падать из-за базы:
+	// при ошибке NextRamadan всё равно возвращает расчётную дату.
+	r, err := s.hijri.NextRamadan(ctx, defaultCountry, time.Now().UTC())
+	if err != nil {
+		slog.Warn("config: next ramadan from db failed, using calculated", "err", err)
+	}
 
 	return GetConfig200JSONResponse{
 		MinSupportedVersion: s.app.MinSupportedVersion,
@@ -38,9 +45,9 @@ func (s *Server) GetConfig(ctx context.Context, req GetConfigRequestObject) (Get
 		},
 		ContentVersions: versions,
 		Ramadan: &RamadanSummary{
-			Status:    ConfirmationStatus("expected"),
-			HijriYear: year,
-			StartDate: openapi_types.Date{Time: start},
+			Status:    ConfirmationStatus(r.Status),
+			HijriYear: r.HijriYear,
+			StartDate: openapi_types.Date{Time: r.Start},
 		},
 		SupportUrl: s.app.SupportURL,
 	}, nil

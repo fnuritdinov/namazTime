@@ -30,7 +30,7 @@ func day(s string) time.Time {
 }
 
 func newSvc() *Service {
-	return NewService(fakeCities{"dushanbe": dushanbe}, fakeOfficial{})
+	return NewService(fakeCities{"dushanbe": dushanbe}, fakeOfficial{}, nil)
 }
 
 func TestGet_ByCity(t *testing.T) {

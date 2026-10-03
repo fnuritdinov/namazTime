@@ -3,7 +3,9 @@ package hijrimonth
 import (
 	"context"
 	"fmt"
+	"nTime/internal/hijri"
 	"regexp"
+	"time"
 )
 
 // InvalidError — неверный параметр (→ 400).
@@ -91,4 +93,30 @@ func (s *Service) Ramadan(ctx context.Context, country string, year int) (Ramada
 		SourceName:   ramadan.SourceName,
 		Duas:         duas,
 	}, nil
+}
+
+// RamadanStart — ближайший Рамадан для /v1/config.
+type RamadanStart struct {
+	HijriYear int
+	Start     time.Time
+	Status    string // "expected" | "confirmed"
+}
+
+// NextRamadan — текущий или следующий Рамадан страны.
+// Год берём по табличному календарю; дату — из базы, если Шуро её уже дали,
+// иначе — расчётную со статусом expected.
+func (s *Service) NextRamadan(ctx context.Context, country string, today time.Time) (RamadanStart, error) {
+	year, start := hijri.NextRamadan(today)
+	out := RamadanStart{HijriYear: year, Start: start, Status: "expected"}
+
+	months, err := s.Months(ctx, country, year)
+	if err != nil {
+		return out, err
+	}
+	for _, m := range months {
+		if m.Month == 9 {
+			out.Start, out.Status = m.Start, m.Status
+		}
+	}
+	return out, nil
 }

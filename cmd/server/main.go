@@ -95,8 +95,9 @@ func run(log *slog.Logger) error {
 	// 3. Зависимости
 	cityRepo := city.NewRepository(db)
 	officialRepo := official.NewRepository(db)
-	scheduleSvc := schedule.NewService(cityRepo, officialRepo)
-	hijriSvc := hijrimonth.NewService(hijrimonth.NewRepository(db))
+	hijriRepo := hijrimonth.NewRepository(db)
+	scheduleSvc := schedule.NewService(cityRepo, officialRepo, hijriRepo)
+	hijriSvc := hijrimonth.NewService(hijriRepo)
 
 	// 4. API из openapi.yaml — один раз, с префиксом /v1
 	api := handler.NewServer(cityRepo, scheduleSvc, hijriSvc, handler.AppInfo{

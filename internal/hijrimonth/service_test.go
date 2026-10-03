@@ -105,3 +105,29 @@ func TestRamadan_Errors(t *testing.T) {
 		}
 	}
 }
+
+func TestNextRamadan(t *testing.T) {
+	today := day("2026-10-03")
+	ctx := context.Background()
+
+	// В базе нет Рамадана → расчёт, expected
+	r, err := NewService(fakeStore{}).NextRamadan(ctx, "TJ", today)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.HijriYear != 1448 || r.Start.Format("2006-01-02") != "2027-02-08" || r.Status != "expected" {
+		t.Errorf("calculated: %+v", r)
+	}
+
+	// Шуро подтвердили другую дату → берём из базы
+	svc := NewService(fakeStore{months: map[string][]Month{
+		"TJ-1448": {{Month: 9, Start: day("2027-02-09"), Status: "confirmed"}},
+	}})
+	r, err = svc.NextRamadan(ctx, "TJ", today)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.Start.Format("2006-01-02") != "2027-02-09" || r.Status != "confirmed" {
+		t.Errorf("official: %+v", r)
+	}
+}

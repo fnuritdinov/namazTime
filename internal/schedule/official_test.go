@@ -38,7 +38,7 @@ func newOfficialSvc() *Service {
 		fakeCities{"dushanbe": dushanbe, "khujand": khujand},
 		fakeOfficial{adjustments: map[string]map[string]int{
 			"khujand": {"fajr": -3, "sunrise": -3, "dhuhr": -3, "asr": -3, "maghrib": -3, "isha": -3},
-		}},
+		}}, nil,
 	)
 }
 

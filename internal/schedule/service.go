@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"nTime/internal/official"
 	"time"
 
 	"nTime/internal/city"
 	"nTime/internal/hijri"
+	"nTime/internal/official"
 	"nTime/internal/prayertime"
 )
 
@@ -37,13 +37,20 @@ type OfficialStore interface {
 	Get(ctx context.Context, cityID string, from, to time.Time) (official.Timetable, error)
 }
 
+// HijriStore — официальные начала месяцев хиджры (в main — hijrimonth.Repository).
+type HijriStore interface {
+	// Starts возвращает начала месяцев страны, начавшихся в диапазоне [from, to].
+	Starts(ctx context.Context, country string, from, to time.Time) ([]hijri.MonthStart, error)
+}
+
 type Service struct {
 	cities   CityGetter
 	official OfficialStore
+	months   HijriStore // nil — дата хиджры только по расчёту
 }
 
-func NewService(cities CityGetter, official OfficialStore) *Service {
-	return &Service{cities: cities, official: official}
+func NewService(cities CityGetter, official OfficialStore, months HijriStore) *Service {
+	return &Service{cities: cities, official: official, months: months}
 }
 
 // Request — параметры GET /v1/prayer-times.
@@ -86,6 +93,7 @@ func (s *Service) Get(ctx context.Context, r Request) (Schedule, error) {
 	// 2. Где считаем: город или координаты
 	out := Schedule{Method: r.Method, Madhab: r.Madhab}
 	var lat, lon float64
+	var country string // "" — по координатам страна неизвестна
 
 	switch {
 	case r.CityID != "":
@@ -93,7 +101,7 @@ func (s *Service) Get(ctx context.Context, r Request) (Schedule, error) {
 		if err != nil {
 			return Schedule{}, err // city.ErrNotFound → 404
 		}
-		lat, lon = c.Lat, c.Lon
+		lat, lon, country = c.Lat, c.Lon, c.Country
 		out.CityID, out.TimeZoneID = c.ID, c.TimeZone
 		if out.Method == "" {
 			out.Method = c.SuggestedMethod
@@ -132,11 +140,16 @@ func (s *Service) Get(ctx context.Context, r Request) (Schedule, error) {
 		return Schedule{}, invalid("madhab must be hanafi or shafii")
 	}
 
-	// 4. Источник. Официальные таблицы появятся в D.3 — пока всегда расчёт.
-	// 4. Источник: official, если есть таблица на ВЕСЬ диапазон; иначе расчёт (для auto)
+	// 4. Календарь хиджры страны (официальные начала месяцев)
+	cal, err := s.calendar(ctx, country, r.From, r.To)
+	if err != nil {
+		return Schedule{}, err
+	}
+
+	// 5. Источник: official, если есть таблица на ВЕСЬ диапазон; иначе расчёт (для auto)
 	switch r.Source {
 	case "", "auto", "official":
-		sch, err := s.officialSchedule(ctx, out, r, loc)
+		sch, err := s.officialSchedule(ctx, out, r, loc, cal)
 		if err == nil {
 			return sch, nil
 		}
@@ -153,7 +166,7 @@ func (s *Service) Get(ctx context.Context, r Request) (Schedule, error) {
 		return Schedule{}, invalid("source must be auto, official or calculated")
 	}
 
-	// 5. Считаем каждый день
+	// 6. Считаем каждый день
 	out.Days = make([]Day, 0, int(r.To.Sub(r.From).Hours()/24)+1)
 	for d := r.From; !d.After(r.To); d = d.AddDate(0, 0, 1) {
 		t, err := prayertime.Calculate(d, lat, lon, loc, method, out.Madhab)
@@ -163,14 +176,14 @@ func (s *Service) Get(ctx context.Context, r Request) (Schedule, error) {
 		if err != nil {
 			return Schedule{}, err
 		}
-		out.Days = append(out.Days, Day{Date: d, Hijri: hijri.FromGregorian(d), Times: t})
+		out.Days = append(out.Days, Day{Date: d, Hijri: cal.Date(d), Times: t})
 	}
 	return out, nil
 }
 
 // officialSchedule собирает расписание из официальной таблицы.
 // Возвращает official.ErrNotFound, если таблицы нет или она покрывает не все дни.
-func (s *Service) officialSchedule(ctx context.Context, out Schedule, r Request, loc *time.Location) (Schedule, error) {
+func (s *Service) officialSchedule(ctx context.Context, out Schedule, r Request, loc *time.Location, cal hijri.Calendar) (Schedule, error) {
 	if out.CityID == "" {
 		return Schedule{}, official.ErrNotFound // по координатам официальных таблиц нет
 	}
@@ -190,11 +203,25 @@ func (s *Service) officialSchedule(ctx context.Context, out Schedule, r Request,
 		if !ok {
 			return Schedule{}, official.ErrNotFound // таблица покрывает не весь диапазон
 		}
-		day, err := officialDay(d, row, tt.Adjustments, loc)
+		day, err := officialDay(d, row, tt.Adjustments, loc, cal)
 		if err != nil {
 			return Schedule{}, err
 		}
 		out.Days = append(out.Days, day)
 	}
 	return out, nil
+}
+
+// calendar загружает официальные начала месяцев, нужные для дат [from, to].
+// Берём с запасом 30 дней назад (месяц мог начаться раньше from)
+// и 1 день вперёд (нужно знать, есть ли в последнем месяце 30-й день).
+func (s *Service) calendar(ctx context.Context, country string, from, to time.Time) (hijri.Calendar, error) {
+	if country == "" || s.months == nil {
+		return hijri.NewCalendar(nil), nil
+	}
+	starts, err := s.months.Starts(ctx, country, from.AddDate(0, 0, -30), to.AddDate(0, 0, 1))
+	if err != nil {
+		return hijri.Calendar{}, fmt.Errorf("hijri months: %w", err)
+	}
+	return hijri.NewCalendar(starts), nil
 }
