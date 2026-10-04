@@ -22,6 +22,7 @@ var Methods = []Method{
 			"en": "Muslim World League",
 			"ru": "Всемирная исламская лига",
 			"ar": "رابطة العالم الإسلامي",
+			"tg": "Робитаи ҷаҳони ислом",
 		},
 		FajrAngle: 18,
 		Isha:      IshaRule{Type: "angle", Value: 17},
@@ -31,6 +32,7 @@ var Methods = []Method{
 		Title: map[string]string{
 			"en": "ISNA (North America)",
 			"ru": "ISNA (Северная Америка)",
+			"tg": "ISNA (Амрикои Шимолӣ)",
 		},
 		FajrAngle: 15,
 		Isha:      IshaRule{Type: "angle", Value: 15},
@@ -40,6 +42,7 @@ var Methods = []Method{
 		Title: map[string]string{
 			"en": "Egyptian General Authority",
 			"ru": "Египетское управление геодезии",
+			"tg": "Идораи генералии геодезии Миср",
 		},
 		FajrAngle: 19.5,
 		Isha:      IshaRule{Type: "angle", Value: 17.5},
@@ -50,6 +53,7 @@ var Methods = []Method{
 			"en": "Umm al-Qura, Makkah",
 			"ru": "Умм аль-Кура, Мекка",
 			"ar": "أم القرى",
+			"tg": "Умм-ул-Қуро, Макка",
 		},
 		FajrAngle: 18.5,
 		Isha:      IshaRule{Type: "minutesAfterMaghrib", Value: 90},
@@ -59,6 +63,7 @@ var Methods = []Method{
 		Title: map[string]string{
 			"en": "University of Karachi",
 			"ru": "Университет Карачи",
+			"tg": "Донишгоҳи Карачӣ",
 		},
 		FajrAngle: 18,
 		Isha:      IshaRule{Type: "angle", Value: 18},
@@ -68,6 +73,7 @@ var Methods = []Method{
 		Title: map[string]string{
 			"en": "Diyanet, Türkiye",
 			"ru": "Диянет, Турция",
+			"tg": "Диёнат, Туркия",
 		},
 		FajrAngle: 18,
 		Isha:      IshaRule{Type: "angle", Value: 17},

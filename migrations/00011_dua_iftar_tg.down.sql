@@ -1,0 +1,1 @@
+DELETE FROM dua_translations WHERE dua_id = 'iftar' AND lang = 'tg';
