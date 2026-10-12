@@ -1,6 +1,6 @@
 openapi: 3.0.3
 info:
-  title: Namoz API
+  title: Zikr API
   version: 1.0.0
   description: |
     Бэкенд приложения Namoz. Составлено по Backend-API.md (техническое задание).
@@ -16,7 +16,7 @@ info:
     - Координаты не логируются и не сохраняются (§16).
 
 servers:
-  - url: https://api.namoz.tj/v1
+  - url: https://api.zikr.cloud/v1
   - url: http://localhost:8080/v1
 
 tags:
@@ -436,7 +436,7 @@ components:
         supportUrl:
           type: string
           format: uri
-          example: https://namoz.tj/support
+          example: https://zikr.cloud/support
 
     Features:
       type: object
@@ -786,18 +786,6 @@ components:
           items:
             type: string
           example: [ ramadan-TJ, eid-TJ, announcements ]
-
-    # ---------- Контент дня ----------
-    AyahRef:
-      type: object
-      required: [ surah, ayah ]
-      properties:
-        surah:
-          type: integer
-          example: 2
-        ayah:
-          type: integer
-          example: 255
 
     # ---------- Ошибки ----------
     ErrorCode:

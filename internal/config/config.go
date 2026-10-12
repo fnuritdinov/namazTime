@@ -32,7 +32,7 @@ func Load() (Config, error) {
 		RedisAddr:        getEnv("REDIS_ADDR", "localhost:6379"),
 		MinAppVersion:    getEnv("APP_MIN_VERSION", "1.0.0"),
 		LatestAppVersion: getEnv("APP_LATEST_VERSION", "1.0.0"),
-		SupportURL:       getEnv("SUPPORT_URL", "https://namoz.tj/support"),
+		SupportURL:       getEnv("SUPPORT_URL", "https://zikr.cloud/support"),
 	}
 	if cfg.DatabaseURL == "" {
 		return Config{}, fmt.Errorf("DATABASE_URL is required")
