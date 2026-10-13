@@ -129,8 +129,10 @@ paths:
       description: |
         Город задаётся через cityId ИЛИ lat + lon + timeZoneId.
         Диапазон from..to — не больше 62 дней.
-        source=auto: официальное расписание, если есть, иначе расчёт.
-        422 unsupported — если source=official, а официальной таблицы нет.
+        source=auto: официальное расписание, если оно есть на весь период, иначе расчёт.
+        Для городов с официальной таблицей (hasOfficialTimetable=true, Таджикистан)
+        auto НЕ переходит на расчёт: если таблица не покрывает весь период — 422 unsupported.
+        Запрашивайте период внутри опубликованного месяца или явно source=calculated.
       parameters:
         - name: cityId
           in: query

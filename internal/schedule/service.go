@@ -94,6 +94,7 @@ func (s *Service) Get(ctx context.Context, r Request) (Schedule, error) {
 	out := Schedule{Method: r.Method, Madhab: r.Madhab}
 	var lat, lon float64
 	var country string // "" — по координатам страна неизвестна
+	var hasOfficial bool
 
 	switch {
 	case r.CityID != "":
@@ -102,6 +103,7 @@ func (s *Service) Get(ctx context.Context, r Request) (Schedule, error) {
 			return Schedule{}, err // city.ErrNotFound → 404
 		}
 		lat, lon, country = c.Lat, c.Lon, c.Country
+		hasOfficial = c.HasOfficialTimetable
 		out.CityID, out.TimeZoneID = c.ID, c.TimeZone
 		if out.Method == "" {
 			out.Method = c.SuggestedMethod
@@ -146,7 +148,9 @@ func (s *Service) Get(ctx context.Context, r Request) (Schedule, error) {
 		return Schedule{}, err
 	}
 
-	// 5. Источник: official, если есть таблица на ВЕСЬ диапазон; иначе расчёт (для auto)
+	// 5. Источник: official, если есть таблица на ВЕСЬ диапазон.
+	// Города с официальной таблицей (TJ): таблица не покрывает период → 422.
+	// Остальные города и координаты: auto → расчёт.
 	switch r.Source {
 	case "", "auto", "official":
 		sch, err := s.officialSchedule(ctx, out, r, loc, cal)
@@ -156,16 +160,20 @@ func (s *Service) Get(ctx context.Context, r Request) (Schedule, error) {
 		if !errors.Is(err, official.ErrNotFound) {
 			return Schedule{}, err
 		}
-		if r.Source == "official" {
-			return Schedule{}, fmt.Errorf("%w: no official timetable for this location and dates", ErrUnsupported)
+
+		// Для городов Таджикистана не подменяем время Шуро расчётом молча.
+		// Расчёт — только если приложение само попросило source=calculated.
+		if r.Source == "official" || hasOfficial {
+			return Schedule{}, fmt.Errorf(
+				"%w: official timetable for %s does not cover %s..%s; request a range inside the published month or use source=calculated",
+				ErrUnsupported, out.CityID, r.From.Format("2006-01-02"), r.To.Format("2006-01-02"))
 		}
-		out.Source = "calculated" // auto → фолбэк на расчёт
+		out.Source = "calculated" // auto → фолбэк на расчёт (города без официальной таблицы)
 	case "calculated":
 		out.Source = "calculated"
 	default:
 		return Schedule{}, invalid("source must be auto, official or calculated")
 	}
-
 	// 6. Считаем каждый день
 	out.Days = make([]Day, 0, int(r.To.Sub(r.From).Hours()/24)+1)
 	for d := r.From; !d.After(r.To); d = d.AddDate(0, 0, 1) {
