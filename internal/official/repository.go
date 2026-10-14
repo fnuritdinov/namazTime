@@ -40,6 +40,13 @@ func (r *Repository) Get(ctx context.Context, cityID string, from, to time.Time)
 		       to_char(d.fajr, 'HH24:MI'), to_char(d.sunrise, 'HH24:MI'), to_char(d.dhuhr, 'HH24:MI'),
 		       to_char(d.asr, 'HH24:MI'), to_char(d.maghrib, 'HH24:MI'), to_char(d.isha, 'HH24:MI'),
 		       COALESCE(to_char(d.imsak, 'HH24:MI'), ''),
+		         COALESCE(to_char(d.fajr_end, 'HH24:MI'), ''),
+		       COALESCE(to_char(d.dhuhr_end, 'HH24:MI'), ''),
+		       COALESCE(to_char(d.asr_end, 'HH24:MI'), ''),
+		       COALESCE(to_char(d.makruh_start, 'HH24:MI'), ''),
+		       COALESCE(to_char(d.makruh_end, 'HH24:MI'), ''),
+		       COALESCE(to_char(d.maghrib_end, 'HH24:MI'), ''),
+		       COALESCE(to_char(d.isha_end, 'HH24:MI'), ''),
 		       COALESCE(d.hijri_day, 0), COALESCE(d.hijri_month, 0), COALESCE(d.hijri_year, 0),
 		       t.updated_at, s.name
 		FROM official_timetable_days d
@@ -63,6 +70,7 @@ func (r *Repository) Get(ctx context.Context, cityID string, from, to time.Time)
 		)
 		if err := rows.Scan(&date,
 			&d.Fajr, &d.Sunrise, &d.Dhuhr, &d.Asr, &d.Maghrib, &d.Isha, &d.Imsak,
+			&d.FajrEnd, &d.DhuhrEnd, &d.AsrEnd, &d.MakruhStart, &d.MakruhEnd, &d.MaghribEnd, &d.IshaEnd,
 			&d.HijriDay, &d.HijriMonth, &d.HijriYear,
 			&updatedAt, &name,
 		); err != nil {

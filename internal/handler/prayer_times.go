@@ -57,10 +57,25 @@ func (s *Server) GetPrayerTimes(ctx context.Context, req GetPrayerTimesRequestOb
 }
 
 func toPrayerTimesResponse(s schedule.Schedule) PrayerTimesResponse {
+	rng := func(r schedule.Range) TimeRange { return TimeRange{Start: r.Start, End: r.End} }
+
 	days := make([]PrayerDay, 0, len(s.Days))
 	for _, d := range s.Days {
 		monthName := toLocalized(d.Hijri.MonthName())
 		imsak := d.Times.Imsak
+
+		times := PrayerPeriods{
+			Fajr:    rng(d.Periods.Fajr),
+			Dhuhr:   rng(d.Periods.Dhuhr),
+			Asr:     rng(d.Periods.Asr),
+			Maghrib: rng(d.Periods.Maghrib),
+			Isha:    rng(d.Periods.Isha),
+		}
+		if d.Periods.Makruh != nil {
+			mk := rng(*d.Periods.Makruh)
+			times.Makruh = &mk
+		}
+
 		days = append(days, PrayerDay{
 			Date: openapi_types.Date{Time: d.Date},
 			Hijri: HijriDate{
@@ -69,15 +84,9 @@ func toPrayerTimesResponse(s schedule.Schedule) PrayerTimesResponse {
 				Year:      d.Hijri.Year,
 				MonthName: &monthName,
 			},
-			Times: PrayerTimes{
-				Fajr:    d.Times.Fajr,
-				Sunrise: d.Times.Sunrise,
-				Dhuhr:   d.Times.Dhuhr,
-				Asr:     d.Times.Asr,
-				Maghrib: d.Times.Maghrib,
-				Isha:    d.Times.Isha,
-			},
-			Imsak: &imsak,
+			Imsak:   &imsak,
+			Sunrise: d.Times.Sunrise,
+			Times:   times,
 		})
 	}
 
@@ -93,7 +102,7 @@ func toPrayerTimesResponse(s schedule.Schedule) PrayerTimesResponse {
 		resp.CityId = &id
 	}
 
-	// Новое: название источника и дата обновления — только для официального расписания
+	// Название источника и дата обновления — только для официального расписания
 	if len(s.SourceName) > 0 {
 		name := toLocalized(s.SourceName)
 		resp.SourceName = &name

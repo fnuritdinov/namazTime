@@ -1,14 +1,15 @@
-// import-timetable загружает официальное расписание намазов из CSV в Postgres.
+// import-timetable загружает официальное расписание намазов Шуро из CSV в Postgres.
 //
 // Пример:
 //
 //	go run ./cmd/import-timetable -city dushanbe -file data/dushanbe-2026-10.csv
 //
-// Формат CSV (первая строка — заголовок):
+// Формат CSV — как строка таблицы на shuroiulamo.tj (первая строка — заголовок):
 //
-//	date,fajr,sunrise,dhuhr,asr,maghrib,isha,hijri_day,hijri_month,hijri_year
-//	2026-10-01,04:51,06:17,12:40,16:25,18:19,19:49,19,4,1448
+//	date,hijri,fajr_start,fajr_end,dhuhr_start,dhuhr_end,asr_start,asr_end,makruh_start,makruh_end,maghrib_start,maghrib_end,isha_start,isha_end
+//	01.10.2026,19.04.1448,04:51,06:17,12:40,16:24,16:25,17:58,17:59,18:18,18:19,18:59,19:49,04:50
 //
+// isha_end — время СЛЕДУЮЩЕГО утра. Восход = fajr_end.
 // Повторный импорт того же файла безопасен: строки обновляются, а не дублируются.
 package main
 
@@ -28,12 +29,23 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-var header = []string{"date", "fajr", "sunrise", "dhuhr", "asr", "maghrib", "isha", "hijri_day", "hijri_month", "hijri_year"}
+var header = []string{
+	"date", "hijri",
+	"fajr_start", "fajr_end",
+	"dhuhr_start", "dhuhr_end",
+	"asr_start", "asr_end",
+	"makruh_start", "makruh_end",
+	"maghrib_start", "maghrib_end",
+	"isha_start", "isha_end",
+}
+
+// timeCols — колонки со временем (всё, кроме date и hijri), в порядке header.
+var timeCols = header[2:]
 
 type day struct {
-	date                                     time.Time
-	fajr, sunrise, dhuhr, asr, maghrib, isha string
-	hijriDay, hijriMonth, hijriYear          *int
+	date                            time.Time
+	t                               map[string]string // колонка → "HH:MM"
+	hijriDay, hijriMonth, hijriYear int
 }
 
 func main() {
@@ -96,7 +108,7 @@ func readCSV(path string) ([]day, error) {
 		}
 		d, err := parseRow(rec)
 		if err != nil {
-			return nil, fmt.Errorf("line %d: %w", line, err)
+			return nil, fmt.Errorf("line %d (%s): %w", line, rec[0], err)
 		}
 		if len(days) > 0 && d.date.Year() != days[0].date.Year() {
 			return nil, fmt.Errorf("line %d: all dates must be in the same year", line)
@@ -114,41 +126,51 @@ func parseRow(rec []string) (day, error) {
 		rec[i] = strings.TrimSpace(rec[i])
 	}
 
-	date, err := time.Parse("2006-01-02", rec[0])
+	date, err := time.Parse("02.01.2006", rec[0])
 	if err != nil {
-		return day{}, fmt.Errorf("date %q: expected YYYY-MM-DD", rec[0])
+		return day{}, fmt.Errorf("date %q: expected DD.MM.YYYY", rec[0])
 	}
 
-	times := rec[1:7]
-	names := header[1:7]
-	for i, t := range times {
-		if _, err := time.Parse("15:04", t); err != nil {
-			return day{}, fmt.Errorf("%s %q: expected HH:MM", names[i], t)
-		}
-		// Намазы должны идти по порядку: fajr < sunrise < dhuhr < asr < maghrib < isha.
-		// "HH:MM" с ведущими нулями можно сравнивать как строки.
-		if i > 0 && t <= times[i-1] {
-			return day{}, fmt.Errorf("%s (%s) must be later than %s (%s)", names[i], t, names[i-1], times[i-1])
-		}
-	}
+	d := day{date: date, t: map[string]string{}}
 
-	d := day{
-		date: date,
-		fajr: times[0], sunrise: times[1], dhuhr: times[2],
-		asr: times[3], maghrib: times[4], isha: times[5],
+	// Хиджра "19.04.1448"
+	hp := strings.Split(rec[1], ".")
+	if len(hp) != 3 {
+		return day{}, fmt.Errorf("hijri %q: expected DD.MM.YYYY", rec[1])
 	}
-
-	// Хиджра необязательна: пустые ячейки → NULL
-	hijri := []**int{&d.hijriDay, &d.hijriMonth, &d.hijriYear}
-	for i, s := range rec[7:10] {
-		if s == "" {
-			continue
-		}
+	nums := []*int{&d.hijriDay, &d.hijriMonth, &d.hijriYear}
+	for i, s := range hp {
 		v, err := strconv.Atoi(s)
 		if err != nil {
-			return day{}, fmt.Errorf("%s %q: expected a number", header[7+i], s)
+			return day{}, fmt.Errorf("hijri %q: expected DD.MM.YYYY", rec[1])
 		}
-		*hijri[i] = &v
+		*nums[i] = v
+	}
+	if d.hijriDay < 1 || d.hijriDay > 30 || d.hijriMonth < 1 || d.hijriMonth > 12 {
+		return day{}, fmt.Errorf("hijri %q: day must be 1..30, month 1..12", rec[1])
+	}
+
+	// Время: формат HH:MM
+	for i, name := range timeCols {
+		v := rec[2+i]
+		if _, err := time.Parse("15:04", v); err != nil {
+			return day{}, fmt.Errorf("%s %q: expected HH:MM", name, v)
+		}
+		d.t[name] = v
+	}
+
+	// Порядок за день: fajr_start < fajr_end < dhuhr_start < ... < isha_start.
+	// "HH:MM" с ведущими нулями можно сравнивать как строки.
+	// isha_end не проверяем по порядку — это время следующего утра.
+	order := timeCols[:len(timeCols)-1]
+	for i := 1; i < len(order); i++ {
+		prev, cur := order[i-1], order[i]
+		if d.t[cur] <= d.t[prev] {
+			return day{}, fmt.Errorf("%s (%s) must be later than %s (%s)", cur, d.t[cur], prev, d.t[prev])
+		}
+	}
+	if d.t["isha_end"] >= "12:00" {
+		return day{}, fmt.Errorf("isha_end (%s) must be the next morning (before 12:00)", d.t["isha_end"])
 	}
 	return d, nil
 }
@@ -179,19 +201,34 @@ func importDays(ctx context.Context, dbURL, cityID, sourceID string, days []day)
 		return 0, fmt.Errorf("upsert timetable: %w", err)
 	}
 
+	// Начала намазов — в старые колонки (fajr, dhuhr, ...), восход = конец Бомдода.
 	const upsertDay = `
 		INSERT INTO official_timetable_days
-		    (timetable_id, date, fajr, sunrise, dhuhr, asr, maghrib, isha, hijri_day, hijri_month, hijri_year)
-		VALUES ($1, $2, $3::text::time, $4::text::time, $5::text::time,
-		        $6::text::time, $7::text::time, $8::text::time, $9, $10, $11)
+		    (timetable_id, date,
+		     fajr, fajr_end, sunrise, dhuhr, dhuhr_end, asr, asr_end,
+		     makruh_start, makruh_end, maghrib, maghrib_end, isha, isha_end,
+		     hijri_day, hijri_month, hijri_year)
+		VALUES ($1, $2,
+		        $3::text::time, $4::text::time, $4::text::time, $5::text::time, $6::text::time,
+		        $7::text::time, $8::text::time, $9::text::time, $10::text::time,
+		        $11::text::time, $12::text::time, $13::text::time, $14::text::time,
+		        $15, $16, $17)
 		ON CONFLICT (timetable_id, date) DO UPDATE SET
-		    fajr = EXCLUDED.fajr, sunrise = EXCLUDED.sunrise, dhuhr = EXCLUDED.dhuhr,
-		    asr = EXCLUDED.asr, maghrib = EXCLUDED.maghrib, isha = EXCLUDED.isha,
+		    fajr = EXCLUDED.fajr, fajr_end = EXCLUDED.fajr_end, sunrise = EXCLUDED.sunrise,
+		    dhuhr = EXCLUDED.dhuhr, dhuhr_end = EXCLUDED.dhuhr_end,
+		    asr = EXCLUDED.asr, asr_end = EXCLUDED.asr_end,
+		    makruh_start = EXCLUDED.makruh_start, makruh_end = EXCLUDED.makruh_end,
+		    maghrib = EXCLUDED.maghrib, maghrib_end = EXCLUDED.maghrib_end,
+		    isha = EXCLUDED.isha, isha_end = EXCLUDED.isha_end,
 		    hijri_day = EXCLUDED.hijri_day, hijri_month = EXCLUDED.hijri_month, hijri_year = EXCLUDED.hijri_year`
 
 	for _, d := range days {
+		t := d.t
 		if _, err := tx.Exec(ctx, upsertDay,
-			timetableID, d.date, d.fajr, d.sunrise, d.dhuhr, d.asr, d.maghrib, d.isha,
+			timetableID, d.date,
+			t["fajr_start"], t["fajr_end"], t["dhuhr_start"], t["dhuhr_end"],
+			t["asr_start"], t["asr_end"], t["makruh_start"], t["makruh_end"],
+			t["maghrib_start"], t["maghrib_end"], t["isha_start"], t["isha_end"],
 			d.hijriDay, d.hijriMonth, d.hijriYear,
 		); err != nil {
 			return 0, fmt.Errorf("day %s: %w", d.date.Format("2006-01-02"), err)

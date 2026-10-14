@@ -9,10 +9,16 @@ import (
 var ErrNotFound = errors.New("no official timetable")
 
 // Day — один день официального расписания. Время — местное "HH:MM".
+// Поля *End и MakruhStart/MakruhEnd — "", если в таблице их нет (старый импорт).
 type Day struct {
-	Fajr, Sunrise, Dhuhr, Asr, Maghrib, Isha string
+	Fajr, Sunrise, Dhuhr, Asr, Maghrib, Isha string // начала намазов (Sunrise = конец Бомдода)
 	Imsak                                    string // "" — источник не публикует
-	HijriDay, HijriMonth, HijriYear          int    // 0 — нет официальной даты хиджры
+
+	FajrEnd, DhuhrEnd, AsrEnd, MaghribEnd string
+	IshaEnd                               string // время СЛЕДУЮЩЕГО утра
+	MakruhStart, MakruhEnd                string
+
+	HijriDay, HijriMonth, HijriYear int // 0 — нет официальной даты хиджры
 }
 
 // Timetable — официальное расписание города на диапазон дат.

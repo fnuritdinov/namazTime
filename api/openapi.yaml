@@ -592,7 +592,7 @@ components:
       properties:
         day:
           type: integer
-          example: 18
+          example: 19
         month:
           type: integer
           example: 4
@@ -602,52 +602,60 @@ components:
         monthName:
           $ref: "#/components/schemas/LocalizedString"
 
-    PrayerTimes:
+    TimeRange:
       type: object
-      description: Моменты времени в ISO 8601 со смещением часового пояса города
-      required: [fajr, sunrise, dhuhr, asr, maghrib, isha]
+      description: Время намаза — начало и конец (ISO 8601 со смещением города)
+      required: [start, end]
+      properties:
+        start:
+          type: string
+          format: date-time
+          example: "2026-10-01T04:51:00+05:00"
+        end:
+          type: string
+          format: date-time
+          example: "2026-10-01T06:17:00+05:00"
+
+    PrayerPeriods:
+      type: object
+      description: |
+        Начало и конец каждого намаза. isha.end — утро следующего дня.
+        makruh — только в официальном расписании (Шурои уламо).
+      required: [fajr, dhuhr, asr, maghrib, isha]
       properties:
         fajr:
-          type: string
-          format: date-time
-          example: "2026-09-30T04:51:00+05:00"
-        sunrise:
-          type: string
-          format: date-time
-          example: "2026-09-30T06:20:00+05:00"
+          $ref: "#/components/schemas/TimeRange"
         dhuhr:
-          type: string
-          format: date-time
-          example: "2026-09-30T12:17:00+05:00"
+          $ref: "#/components/schemas/TimeRange"
         asr:
-          type: string
-          format: date-time
-          example: "2026-09-30T16:26:00+05:00"
+          $ref: "#/components/schemas/TimeRange"
+        makruh:
+          $ref: "#/components/schemas/TimeRange"
         maghrib:
-          type: string
-          format: date-time
-          example: "2026-09-30T18:11:00+05:00"
+          $ref: "#/components/schemas/TimeRange"
         isha:
-          type: string
-          format: date-time
-          example: "2026-09-30T19:33:00+05:00"
+          $ref: "#/components/schemas/TimeRange"
 
     PrayerDay:
       type: object
-      required: [date, hijri, times]
+      required: [date, hijri, sunrise, times]
       properties:
         date:
           type: string
           format: date
-          example: "2026-09-30"
+          example: "2026-10-01"
         hijri:
           $ref: "#/components/schemas/HijriDate"
-        times:
-          $ref: "#/components/schemas/PrayerTimes"
         imsak:
           type: string
           format: date-time
-          example: "2026-09-30T04:41:00+05:00"
+          example: "2026-10-01T04:41:00+05:00"
+        sunrise:
+          type: string
+          format: date-time
+          example: "2026-10-01T06:17:00+05:00"
+        times:
+          $ref: "#/components/schemas/PrayerPeriods"
 
     PrayerTimesResponse:
       type: object
@@ -716,14 +724,14 @@ components:
         endDate:
           type: string
           format: date
-          example: "2027-03-09"
+          example: "2027-03-08"
         length:
           type: integer
-          example: 30
+          example: 29
         eidAlFitr:
           type: string
           format: date
-          example: "2027-03-10"
+          example: "2027-03-09"
         laylatAlQadrExpected:
           type: string
           format: date

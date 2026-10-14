@@ -65,7 +65,7 @@ func TestRegisterAndAuthenticate(t *testing.T) {
 	if token2 == token {
 		t.Error("tokens must be unique")
 	}
-	
+
 }
 
 func TestRegister_Invalid(t *testing.T) {

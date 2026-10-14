@@ -65,9 +65,10 @@ type Request struct {
 }
 
 type Day struct {
-	Date  time.Time
-	Hijri hijri.Date
-	Times prayertime.Times
+	Date    time.Time
+	Hijri   hijri.Date
+	Times   prayertime.Times
+	Periods Periods
 }
 
 type Schedule struct {
@@ -174,17 +175,33 @@ func (s *Service) Get(ctx context.Context, r Request) (Schedule, error) {
 	default:
 		return Schedule{}, invalid("source must be auto, official or calculated")
 	}
-	// 6. Считаем каждый день
-	out.Days = make([]Day, 0, int(r.To.Sub(r.From).Hours()/24)+1)
-	for d := r.From; !d.After(r.To); d = d.AddDate(0, 0, 1) {
+	// 6. Считаем каждый день. Нужен ещё 1 день после to: Хуфтан длится до Бомдода следующего дня.
+	n := int(r.To.Sub(r.From).Hours()/24) + 1
+	times := make([]prayertime.Times, 0, n+1)
+	for i := 0; i <= n; i++ {
+		d := r.From.AddDate(0, 0, i)
 		t, err := prayertime.Calculate(d, lat, lon, loc, method, out.Madhab)
-		if errors.Is(err, prayertime.ErrPolar) {
+		switch {
+		case errors.Is(err, prayertime.ErrPolar) && i == n:
+			// лишний день нужен только для конца Хуфтана — берём Бомдод последнего дня + сутки
+			t.Fajr = times[n-1].Fajr.AddDate(0, 0, 1)
+		case errors.Is(err, prayertime.ErrPolar):
 			return Schedule{}, fmt.Errorf("%w: %v", ErrUnsupported, err)
-		}
-		if err != nil {
+		case err != nil:
 			return Schedule{}, err
 		}
-		out.Days = append(out.Days, Day{Date: d, Hijri: cal.Date(d), Times: t})
+		times = append(times, t)
+	}
+
+	out.Days = make([]Day, 0, n)
+	for i := 0; i < n; i++ {
+		d := r.From.AddDate(0, 0, i)
+		out.Days = append(out.Days, Day{
+			Date:    d,
+			Hijri:   cal.Date(d),
+			Times:   times[i],
+			Periods: periodsByRule(times[i], times[i+1].Fajr),
+		})
 	}
 	return out, nil
 }
