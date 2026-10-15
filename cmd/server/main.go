@@ -13,6 +13,7 @@ import (
 
 	"nTime/internal/config"
 	"nTime/internal/device"
+	"nTime/internal/shuro"
 )
 
 func main() {
@@ -51,6 +52,21 @@ func run(log *slog.Logger) error {
 	// 2. Сервисы и API
 	app := newApp(db, cfg)
 	go device.RunCleanup(ctx, app.deviceRepo, 12, 24*time.Hour, log)
+
+	dushanbeLoc, err := time.LoadLocation("Asia/Dushanbe")
+	if err != nil {
+		return fmt.Errorf("load Asia/Dushanbe: %w", err)
+	}
+	shuroWorker := &shuro.Worker{
+		Fetch:    shuro.NewClient(),
+		Save:     &shuro.Store{DB: db},
+		Log:      log,
+		Loc:      dushanbeLoc,
+		Hour:     3,
+		CityID:   "dushanbe",
+		SourceID: "shuroiulamo-tj",
+	}
+	go shuroWorker.Run(ctx)
 
 	// 3. Адреса и фильтры
 	router := newRouter(app.api, db, rdb, log)
