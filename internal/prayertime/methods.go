@@ -12,6 +12,7 @@ type Method struct {
 	Title     map[string]string // язык → название
 	FajrAngle float64           // угол солнца под горизонтом для Фаджра, градусы
 	Isha      IshaRule
+	AladhanID int // номер метода в api.aladhan.com (параметр method)
 }
 
 // Methods — методы из ТЗ (§6). Идентификаторы СТРОГО совпадают с iOS.
@@ -26,6 +27,7 @@ var Methods = []Method{
 		},
 		FajrAngle: 18,
 		Isha:      IshaRule{Type: "angle", Value: 17},
+		AladhanID: 3,
 	},
 	{
 		ID: "northAmerica",
@@ -36,6 +38,7 @@ var Methods = []Method{
 		},
 		FajrAngle: 15,
 		Isha:      IshaRule{Type: "angle", Value: 15},
+		AladhanID: 2,
 	},
 	{
 		ID: "egypt",
@@ -46,6 +49,7 @@ var Methods = []Method{
 		},
 		FajrAngle: 19.5,
 		Isha:      IshaRule{Type: "angle", Value: 17.5},
+		AladhanID: 5,
 	},
 	{
 		ID: "ummAlQura",
@@ -57,6 +61,7 @@ var Methods = []Method{
 		},
 		FajrAngle: 18.5,
 		Isha:      IshaRule{Type: "minutesAfterMaghrib", Value: 90},
+		AladhanID: 4,
 	},
 	{
 		ID: "karachi",
@@ -67,6 +72,7 @@ var Methods = []Method{
 		},
 		FajrAngle: 18,
 		Isha:      IshaRule{Type: "angle", Value: 18},
+		AladhanID: 1,
 	},
 	{
 		ID: "turkey",
@@ -77,6 +83,7 @@ var Methods = []Method{
 		},
 		FajrAngle: 18,
 		Isha:      IshaRule{Type: "angle", Value: 17},
+		AladhanID: 13,
 	},
 }
 

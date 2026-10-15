@@ -129,10 +129,11 @@ paths:
       description: |
         Город задаётся через cityId ИЛИ lat + lon + timeZoneId.
         Диапазон from..to — не больше 62 дней.
-        source=auto: официальное расписание, если оно есть на весь период, иначе расчёт.
+        source=auto: официальное расписание, если оно есть на весь период, иначе время из Aladhan (сами не считаем).
         Для городов с официальной таблицей (hasOfficialTimetable=true, Таджикистан)
         auto НЕ переходит на расчёт: если таблица не покрывает весь период — 422 unsupported.
         Запрашивайте период внутри опубликованного месяца или явно source=calculated.
+        503 unavailable — Aladhan недоступен и данных нет в кеше; повторите запрос позже.
       parameters:
         - name: cityId
           in: query
@@ -181,7 +182,7 @@ paths:
         - name: method
           in: query
           required: false
-          description: По умолчанию — suggestedMethod города
+          description: По умолчанию — karachi
           schema:
             $ref: "#/components/schemas/CalculationMethodId"
         - name: madhab
@@ -212,6 +213,8 @@ paths:
           $ref: "#/components/responses/RateLimited"
         "500":
           $ref: "#/components/responses/Internal"
+        "503":
+          $ref: "#/components/responses/Unavailable"
 
   /ramadan/{hijriYear}:
     get:
@@ -807,6 +810,7 @@ components:
         - conflict
         - unsupported
         - rate_limited
+        - unavailable
         - internal
 
     ErrorBody:
@@ -859,6 +863,12 @@ components:
             $ref: "#/components/schemas/Error"
     Unsupported:
       description: Операция не поддерживается, например нет официального расписания (unsupported)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Unavailable:
+      description: Источник времени намазов (Aladhan) временно недоступен (unavailable). Повторите позже.
       content:
         application/json:
           schema:

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"nTime/internal/aladhan"
 	"nTime/internal/city"
 	"nTime/internal/hijri"
 	"nTime/internal/official"
@@ -13,6 +14,9 @@ import (
 )
 
 const maxDays = 62 // §6 ТЗ: диапазон не больше 62 дней
+
+// defaultMethod — метод для всех, кроме Таджикистана, если приложение не прислало свой.
+const defaultMethod = "karachi"
 
 // InvalidError — неверный параметр запроса (→ 400 invalid_argument).
 type InvalidError struct{ Msg string }
@@ -25,6 +29,9 @@ func invalid(format string, args ...any) error {
 
 // ErrUnsupported — запрос корректный, но выполнить нельзя (→ 422 unsupported).
 var ErrUnsupported = errors.New("unsupported")
+
+// ErrUnavailable — внешний источник времени (Aladhan) недоступен, а в кеше нет (→ 503).
+var ErrUnavailable = aladhan.ErrUnavailable
 
 // CityGetter — откуда берём город (в main — city.Repository, в тестах — заглушка).
 type CityGetter interface {
@@ -43,14 +50,21 @@ type HijriStore interface {
 	Starts(ctx context.Context, country string, from, to time.Time) ([]hijri.MonthStart, error)
 }
 
+// TimesSource — время намазов из Aladhan (в main — *aladhan.Service).
+type TimesSource interface {
+	// Month возвращает все дни месяца. cityID == "" — запрос по координатам.
+	Month(ctx context.Context, cityID string, m aladhan.Month) ([]aladhan.Day, error)
+}
+
 type Service struct {
 	cities   CityGetter
 	official OfficialStore
 	months   HijriStore // nil — дата хиджры только по расчёту
+	times    TimesSource
 }
 
-func NewService(cities CityGetter, official OfficialStore, months HijriStore) *Service {
-	return &Service{cities: cities, official: official, months: months}
+func NewService(cities CityGetter, official OfficialStore, months HijriStore, times TimesSource) *Service {
+	return &Service{cities: cities, official: official, months: months, times: times}
 }
 
 // Request — параметры GET /v1/prayer-times.
@@ -59,7 +73,7 @@ type Request struct {
 	Lat, Lon   *float64 // …либо координаты + часовой пояс
 	TimeZoneID string
 	From, To   time.Time
-	Method     string // "" — suggestedMethod города
+	Method     string // "" — karachi
 	Madhab     string // "" — suggestedMadhab города
 	Source     string // "", "auto", "official", "calculated"
 }
@@ -93,6 +107,9 @@ func (s *Service) Get(ctx context.Context, r Request) (Schedule, error) {
 
 	// 2. Где считаем: город или координаты
 	out := Schedule{Method: r.Method, Madhab: r.Madhab}
+	if out.Method == "" {
+		out.Method = defaultMethod
+	}
 	var lat, lon float64
 	var country string // "" — по координатам страна неизвестна
 	var hasOfficial bool
@@ -106,9 +123,6 @@ func (s *Service) Get(ctx context.Context, r Request) (Schedule, error) {
 		lat, lon, country = c.Lat, c.Lon, c.Country
 		hasOfficial = c.HasOfficialTimetable
 		out.CityID, out.TimeZoneID = c.ID, c.TimeZone
-		if out.Method == "" {
-			out.Method = c.SuggestedMethod
-		}
 		if out.Madhab == "" {
 			out.Madhab = c.SuggestedMadhab
 		}
@@ -119,9 +133,6 @@ func (s *Service) Get(ctx context.Context, r Request) (Schedule, error) {
 			return Schedule{}, invalid("lat must be in [-90, 90], lon in [-180, 180]")
 		}
 		out.TimeZoneID = r.TimeZoneID
-		if out.Method == "" {
-			out.Method = "muslimWorldLeague"
-		}
 		if out.Madhab == "" {
 			out.Madhab = prayertime.Hanafi
 		}
@@ -130,7 +141,7 @@ func (s *Service) Get(ctx context.Context, r Request) (Schedule, error) {
 		return Schedule{}, invalid("either cityId or lat, lon and timeZoneId are required")
 	}
 
-	// 3. Проверяем параметры расчёта
+	// 3. Проверяем параметры
 	loc, err := time.LoadLocation(out.TimeZoneID)
 	if err != nil || out.TimeZoneID == "Local" {
 		return Schedule{}, invalid("unknown timeZoneId %q", out.TimeZoneID)
@@ -151,7 +162,7 @@ func (s *Service) Get(ctx context.Context, r Request) (Schedule, error) {
 
 	// 5. Источник: official, если есть таблица на ВЕСЬ диапазон.
 	// Города с официальной таблицей (TJ): таблица не покрывает период → 422.
-	// Остальные города и координаты: auto → расчёт.
+	// Остальные города и координаты: auto → Aladhan.
 	switch r.Source {
 	case "", "auto", "official":
 		sch, err := s.officialSchedule(ctx, out, r, loc, cal)
@@ -162,35 +173,56 @@ func (s *Service) Get(ctx context.Context, r Request) (Schedule, error) {
 			return Schedule{}, err
 		}
 
-		// Для городов Таджикистана не подменяем время Шуро расчётом молча.
-		// Расчёт — только если приложение само попросило source=calculated.
+		// Для городов Таджикистана не подменяем время Шуро молча.
+		// Aladhan — только если приложение само попросило source=calculated.
 		if r.Source == "official" || hasOfficial {
 			return Schedule{}, fmt.Errorf(
 				"%w: official timetable for %s does not cover %s..%s; request a range inside the published month or use source=calculated",
 				ErrUnsupported, out.CityID, r.From.Format("2006-01-02"), r.To.Format("2006-01-02"))
 		}
-		out.Source = "calculated" // auto → фолбэк на расчёт (города без официальной таблицы)
+		out.Source = "calculated"
 	case "calculated":
 		out.Source = "calculated"
 	default:
 		return Schedule{}, invalid("source must be auto, official or calculated")
 	}
-	// 6. Считаем каждый день. Нужен ещё 1 день после to: Хуфтан длится до Бомдода следующего дня.
+
+	// 6. Время из Aladhan — сами не считаем.
+	// Нужен ещё 1 день после to: Хуфтан длится до Бомдода следующего дня.
+	school := 1 // ханафи
+	if out.Madhab == prayertime.Shafii {
+		school = 0
+	}
 	n := int(r.To.Sub(r.From).Hours()/24) + 1
+	last := r.From.AddDate(0, 0, n) // этот лишний день нужен только для конца Хуфтана
+
+	byDate := map[string]aladhan.Day{}
+	first := time.Date(r.From.Year(), r.From.Month(), 1, 0, 0, 0, 0, r.From.Location())
+	for m := first; !m.After(last); m = m.AddDate(0, 1, 0) {
+		days, err := s.times.Month(ctx, out.CityID, aladhan.Month{
+			Year: m.Year(), Month: m.Month(),
+			Lat: lat, Lon: lon, Loc: loc,
+			Method: method.AladhanID, School: school,
+		})
+		if err != nil {
+			return Schedule{}, err // aladhan.ErrUnavailable → 503
+		}
+		for _, d := range days {
+			byDate[d.Date.Format("2006-01-02")] = d
+		}
+	}
+
 	times := make([]prayertime.Times, 0, n+1)
 	for i := 0; i <= n; i++ {
-		d := r.From.AddDate(0, 0, i)
-		t, err := prayertime.Calculate(d, lat, lon, loc, method, out.Madhab)
-		switch {
-		case errors.Is(err, prayertime.ErrPolar) && i == n:
-			// лишний день нужен только для конца Хуфтана — берём Бомдод последнего дня + сутки
-			t.Fajr = times[n-1].Fajr.AddDate(0, 0, 1)
-		case errors.Is(err, prayertime.ErrPolar):
-			return Schedule{}, fmt.Errorf("%w: %v", ErrUnsupported, err)
-		case err != nil:
-			return Schedule{}, err
+		key := r.From.AddDate(0, 0, i).Format("2006-01-02")
+		d, ok := byDate[key]
+		if !ok {
+			return Schedule{}, fmt.Errorf("%w: no data for %s", ErrUnavailable, key)
 		}
-		times = append(times, t)
+		times = append(times, prayertime.Times{
+			Imsak: d.Imsak, Fajr: d.Fajr, Sunrise: d.Sunrise, Dhuhr: d.Dhuhr,
+			Asr: d.Asr, Maghrib: d.Maghrib, Isha: d.Isha,
+		})
 	}
 
 	out.Days = make([]Day, 0, n)

@@ -30,7 +30,7 @@ func day(s string) time.Time {
 }
 
 func newSvc() *Service {
-	return NewService(fakeCities{"dushanbe": dushanbe}, fakeOfficial{}, nil)
+	return NewService(fakeCities{"dushanbe": dushanbe}, fakeOfficial{}, nil, fakeTimes{})
 }
 
 func TestGet_ByCity(t *testing.T) {
@@ -43,7 +43,7 @@ func TestGet_ByCity(t *testing.T) {
 	if len(got.Days) != 7 {
 		t.Fatalf("дней %d, ожидали 7", len(got.Days))
 	}
-	if got.Method != "muslimWorldLeague" || got.Madhab != "hanafi" || got.Source != "calculated" {
+	if got.Method != "karachi" || got.Madhab != "hanafi" || got.Source != "calculated" {
 		t.Errorf("method=%s madhab=%s source=%s", got.Method, got.Madhab, got.Source)
 	}
 	// Эталон ТЗ: Фаджр 30.09 в 04:51 +05:00

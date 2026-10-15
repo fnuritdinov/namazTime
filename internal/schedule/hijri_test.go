@@ -25,7 +25,7 @@ func (f *fakeMonths) Starts(_ context.Context, country string, from, to time.Tim
 
 func TestGet_HijriFromCountryCalendar(t *testing.T) {
 	months := &fakeMonths{}
-	svc := NewService(fakeCities{"dushanbe": dushanbe}, fakeOfficial{}, months)
+	svc := NewService(fakeCities{"dushanbe": dushanbe}, fakeOfficial{}, months, fakeTimes{})
 
 	got, err := svc.Get(context.Background(), Request{
 		CityID: "dushanbe", From: day("2026-09-30"), To: day("2026-10-12"), Source: "calculated",
@@ -48,7 +48,7 @@ func TestGet_HijriFromCountryCalendar(t *testing.T) {
 func TestGet_HijriByCoordinatesIsCalculated(t *testing.T) {
 	// По координатам страна неизвестна → только расчёт, база не спрашивается
 	months := &fakeMonths{}
-	svc := NewService(fakeCities{}, fakeOfficial{}, months)
+	svc := NewService(fakeCities{}, fakeOfficial{}, months, fakeTimes{})
 	lat, lon := 38.56, 68.79
 	got, err := svc.Get(context.Background(), Request{
 		Lat: &lat, Lon: &lon, TimeZoneID: "Asia/Dushanbe", From: day("2026-09-30"), To: day("2026-09-30"),
@@ -65,7 +65,7 @@ func TestGet_HijriByCoordinatesIsCalculated(t *testing.T) {
 }
 
 func TestGet_HijriStoreError(t *testing.T) {
-	svc := NewService(fakeCities{"dushanbe": dushanbe}, fakeOfficial{}, &fakeMonths{err: errors.New("db down")})
+	svc := NewService(fakeCities{"dushanbe": dushanbe}, fakeOfficial{}, &fakeMonths{err: errors.New("db down")}, fakeTimes{})
 	_, err := svc.Get(context.Background(), Request{CityID: "dushanbe", From: day("2026-09-30"), To: day("2026-09-30")})
 	if err == nil {
 		t.Error("ожидали ошибку базы")

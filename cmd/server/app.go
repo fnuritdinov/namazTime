@@ -1,6 +1,9 @@
 package main
 
 import (
+	"log/slog"
+	"nTime/internal/aladhan"
+
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"nTime/internal/city"
@@ -26,7 +29,8 @@ func newApp(db *pgxpool.Pool, cfg config.Config) app {
 	hijriRepo := hijrimonth.NewRepository(db)
 	deviceRepo := device.NewRepository(db)
 
-	scheduleSvc := schedule.NewService(cityRepo, officialRepo, hijriRepo)
+	scheduleSvc := schedule.NewService(cityRepo, officialRepo, hijriRepo,
+		&aladhan.Service{Client: aladhan.NewClient(), DB: db, Log: slog.Default()})
 	hijriSvc := hijrimonth.NewService(hijriRepo)
 	deviceSvc := device.NewService(deviceRepo)
 
