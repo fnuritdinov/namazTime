@@ -22,3 +22,5 @@ tmp/
 # Данные, которые не храним в git
 data/quran/
 backups/
+*.p8
+secrets/
