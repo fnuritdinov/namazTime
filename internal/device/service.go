@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"regexp"
+	"strings"
 	"time"
 )
 
@@ -28,8 +29,9 @@ func NewService(store Store) *Service {
 }
 
 var (
-	versionRe = regexp.MustCompile(`^\d{1,4}(\.\d{1,4}){0,3}$`)        // 1.0, 1.2.3
-	localeRe  = regexp.MustCompile(`^[a-z]{2,3}([_-][A-Za-z]{2,4})?$`) // ru, ru_TJ, tg-TJ
+	versionRe = regexp.MustCompile(`^\d{1,4}(\.\d{1,4}){0,3}$`) // 1.0, 1.2.3
+	langRe    = regexp.MustCompile(`^[a-z]{2,3}$`)              // ru, tg, en
+	regionRe  = regexp.MustCompile(`^([A-Z]{2}|[0-9]{3})$`)     // TJ, US, 419
 	countryRe = regexp.MustCompile(`^[A-Z]{2}$`)
 	apnsRe    = regexp.MustCompile(`^[0-9a-fA-F]{64,200}$`)
 	topicRe   = regexp.MustCompile(`^((ramadan|eid)-[A-Z]{2}|announcements)$`)
@@ -40,13 +42,12 @@ const maxTopics = 20
 // Register создаёт устройство и возвращает его id и токен.
 // Токен показывается один раз: в базе хранится только SHA-256 от него (§16 ТЗ).
 func (s *Service) Register(ctx context.Context, d Device) (id, token string, err error) {
+	d.Locale = normalizeLocale(d.Locale) // ru-TJ, ru_TJ@calendar=... → ru_TJ; мусор → ""
 	switch {
 	case d.Platform != "ios":
 		return "", "", &InvalidError{Msg: "platform must be ios"}
 	case !versionRe.MatchString(d.AppVersion):
 		return "", "", &InvalidError{Msg: "appVersion must look like 1.0.0"}
-	case d.Locale != "" && !localeRe.MatchString(d.Locale):
-		return "", "", &InvalidError{Msg: "locale must look like ru_TJ"}
 	case d.Country != "" && !countryRe.MatchString(d.Country):
 		return "", "", &InvalidError{Msg: "country must be ISO 3166-1 alpha-2, e.g. TJ"}
 	}
@@ -115,4 +116,25 @@ func randomHex(n int) string {
 	b := make([]byte, n)
 	_, _ = rand.Read(b)
 	return hex.EncodeToString(b)
+}
+
+// normalizeLocale приводит локаль iOS к виду "ru_TJ" или "ru".
+// Убирает хвост после @ (ru_TJ@calendar=islamic), скрипт (zh-Hans_CN → zh_CN),
+// меняет "-" на "_". Если язык не распознан — "" (поле необязательное, запрос не отклоняем).
+func normalizeLocale(s string) string {
+	s = strings.TrimSpace(s)
+	if i := strings.IndexByte(s, '@'); i >= 0 {
+		s = s[:i]
+	}
+	parts := strings.Split(strings.ReplaceAll(s, "-", "_"), "_")
+	lang := strings.ToLower(parts[0])
+	if !langRe.MatchString(lang) {
+		return ""
+	}
+	if len(parts) > 1 {
+		if region := strings.ToUpper(parts[len(parts)-1]); regionRe.MatchString(region) {
+			return lang + "_" + region
+		}
+	}
+	return lang
 }
