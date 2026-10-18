@@ -76,7 +76,7 @@ func toPrayerTimesResponse(s schedule.Schedule) PrayerTimesResponse {
 			times.Makruh = &mk
 		}
 
-		days = append(days, PrayerDay{
+		pd := PrayerDay{
 			Date: openapi_types.Date{Time: d.Date},
 			Hijri: HijriDate{
 				Day:       d.Hijri.Day,
@@ -87,7 +87,14 @@ func toPrayerTimesResponse(s schedule.Schedule) PrayerTimesResponse {
 			Imsak:   &imsak,
 			Sunrise: d.Times.Sunrise,
 			Times:   times,
-		})
+		}
+		if d.Extra != nil {
+			pd.Sunset = &d.Extra.Sunset
+			pd.Midnight = &d.Extra.Midnight
+			pd.FirstThird = &d.Extra.FirstThird
+			pd.LastThird = &d.Extra.LastThird
+		}
+		days = append(days, pd)
 	}
 
 	resp := PrayerTimesResponse{

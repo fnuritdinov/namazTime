@@ -62,7 +62,8 @@ func (s *Service) load(ctx context.Context, cityID string, m Month) ([]Day, erro
 	}
 	for i := range days { // в JSON время со сдвигом (+03:00) — возвращаем в пояс города
 		d := &days[i]
-		for _, t := range []*time.Time{&d.Date, &d.Imsak, &d.Fajr, &d.Sunrise, &d.Dhuhr, &d.Asr, &d.Maghrib, &d.Isha} {
+		for _, t := range []*time.Time{&d.Date, &d.Imsak, &d.Fajr, &d.Sunrise, &d.Dhuhr, &d.Asr, &d.Maghrib, &d.Isha,
+			&d.Sunset, &d.Midnight, &d.FirstThird, &d.LastThird} {
 			*t = t.In(m.Loc)
 		}
 	}

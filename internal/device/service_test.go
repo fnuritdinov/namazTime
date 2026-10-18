@@ -74,13 +74,21 @@ func TestRegister_Invalid(t *testing.T) {
 	for name, d := range map[string]Device{
 		"platform": {Platform: "android", AppVersion: "1.0.0"},
 		"version":  {Platform: "ios", AppVersion: "latest"},
-		"locale":   {Platform: "ios", AppVersion: "1.0.0", Locale: "русский"},
 		"country":  {Platform: "ios", AppVersion: "1.0.0", Country: "tj"},
 		"timezone": {Platform: "ios", AppVersion: "1.0.0", TimeZoneID: "Mars/Olympus"},
 	} {
 		if _, _, err := svc.Register(context.Background(), d); !errors.As(err, &ie) {
 			t.Errorf("%s: want InvalidError, got %v", name, err)
 		}
+	}
+}
+
+// Непонятный locale не должен ломать регистрацию: сервер его просто очищает.
+func TestRegister_LocaleNotRejected(t *testing.T) {
+	svc := NewService(newMem())
+	d := Device{Platform: "ios", AppVersion: "1.0.0", Locale: "русский"}
+	if _, _, err := svc.Register(context.Background(), d); err != nil {
+		t.Fatalf("locale must not reject registration: %v", err)
 	}
 }
 

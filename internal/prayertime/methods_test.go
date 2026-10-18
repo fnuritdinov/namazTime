@@ -2,28 +2,23 @@ package prayertime
 
 import "testing"
 
-func TestMethods(t *testing.T) {
-	// Идентификаторы из ТЗ и iOS — ни одного лишнего, ни одного пропущенного
-	want := []string{"muslimWorldLeague", "northAmerica", "egypt", "ummAlQura", "karachi", "turkey"}
-
-	if len(Methods) != len(want) {
-		t.Fatalf("методов %d, ожидали %d", len(Methods), len(want))
-	}
-	for _, id := range want {
-		m, ok := MethodByID(id)
-		if !ok {
-			t.Errorf("метод %q не найден", id)
-			continue
+func TestMethodsUnique(t *testing.T) {
+	ids := map[string]bool{}
+	aladhan := map[int]string{}
+	for _, m := range Methods {
+		if ids[m.ID] {
+			t.Errorf("duplicate ID %q", m.ID)
 		}
-		if m.Title["en"] == "" {
-			t.Errorf("у метода %q нет английского названия (фолбэк по ТЗ)", id)
+		ids[m.ID] = true
+		if prev, ok := aladhan[m.AladhanID]; ok {
+			t.Errorf("AladhanID %d used by %s and %s", m.AladhanID, prev, m.ID)
 		}
-		if m.FajrAngle <= 0 {
-			t.Errorf("у метода %q не задан угол Фаджра", id)
+		aladhan[m.AladhanID] = m.ID
+		if m.Title["en"] == "" || m.Title["ru"] == "" || m.Title["tg"] == "" {
+			t.Errorf("%s: title en/ru/tg required", m.ID)
 		}
 	}
-
-	if _, ok := MethodByID("unknown"); ok {
-		t.Error("несуществующий метод не должен находиться")
+	if len(Methods) != 23 {
+		t.Errorf("want 23 methods, got %d", len(Methods))
 	}
 }

@@ -547,6 +547,23 @@ components:
         - ummAlQura
         - karachi
         - turkey
+        - moonsightingCommittee
+        - russia
+        - gulf
+        - kuwait
+        - qatar
+        - dubai
+        - jordan
+        - tehran
+        - jafari
+        - jakim
+        - singapore
+        - kemenag
+        - france
+        - portugal
+        - tunisia
+        - algeria
+        - morocco
 
     Madhab:
       type: string
@@ -657,6 +674,22 @@ components:
           type: string
           format: date-time
           example: "2026-10-01T06:17:00+05:00"
+        sunset:
+          type: string
+          format: date-time
+          description: Закат. Только для source=calculated (страны кроме Таджикистана).
+        midnight:
+          type: string
+          format: date-time
+          description: Исламская полночь (середина ночи). Обычно уже следующий день. Только для source=calculated.
+        firstThird:
+          type: string
+          format: date-time
+          description: Конец первой трети ночи. Только для source=calculated.
+        lastThird:
+          type: string
+          format: date-time
+          description: Начало последней трети ночи (тахаджуд). Обычно следующий день. Только для source=calculated.
         times:
           $ref: "#/components/schemas/PrayerPeriods"
 

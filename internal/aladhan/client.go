@@ -23,6 +23,10 @@ var ErrUnavailable = errors.New("aladhan unavailable")
 type Day struct {
 	Date                                            time.Time
 	Imsak, Fajr, Sunrise, Dhuhr, Asr, Maghrib, Isha time.Time
+
+	// Дополнительно (только для стран, где время из Aladhan).
+	// Midnight, FirstThird, LastThird могут быть уже следующим днём (после 00:00).
+	Sunset, Midnight, FirstThird, LastThird time.Time
 }
 
 type Client struct {
@@ -119,12 +123,20 @@ func parseMonth(body []byte, year int, month time.Month, loc *time.Location) ([]
 		}{
 			{"Imsak", &day.Imsak}, {"Fajr", &day.Fajr}, {"Sunrise", &day.Sunrise},
 			{"Dhuhr", &day.Dhuhr}, {"Asr", &day.Asr}, {"Maghrib", &day.Maghrib}, {"Isha", &day.Isha},
+			{"Sunset", &day.Sunset}, {"Midnight", &day.Midnight},
+			{"Firstthird", &day.FirstThird}, {"Lastthird", &day.LastThird},
 		} {
 			t, err := clock(date, d.Timings[f.key], loc)
 			if err != nil {
 				return nil, fmt.Errorf("%w: %s %s: %v", ErrUnavailable, d.Date.Gregorian.Date, f.key, err)
 			}
 			*f.dst = t
+		}
+		// Полночь и трети ночи после 00:00 — это уже следующий календарный день
+		for _, t := range []*time.Time{&day.Midnight, &day.FirstThird, &day.LastThird} {
+			if t.Before(day.Maghrib) {
+				*t = t.AddDate(0, 0, 1)
+			}
 		}
 		if !(day.Fajr.Before(day.Sunrise) && day.Sunrise.Before(day.Dhuhr) && day.Dhuhr.Before(day.Asr) &&
 			day.Asr.Before(day.Maghrib) && day.Maghrib.Before(day.Isha)) {

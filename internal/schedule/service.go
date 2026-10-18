@@ -83,6 +83,13 @@ type Day struct {
 	Hijri   hijri.Date
 	Times   prayertime.Times
 	Periods Periods
+	Extra   *Extra // только для времени из Aladhan (не Таджикистан); nil — полей нет
+}
+
+// Extra — дополнительные времена от Aladhan.
+// Midnight, FirstThird, LastThird могут быть уже следующим днём.
+type Extra struct {
+	Sunset, Midnight, FirstThird, LastThird time.Time
 }
 
 type Schedule struct {
@@ -228,12 +235,16 @@ func (s *Service) Get(ctx context.Context, r Request) (Schedule, error) {
 	out.Days = make([]Day, 0, n)
 	for i := 0; i < n; i++ {
 		d := r.From.AddDate(0, 0, i)
-		out.Days = append(out.Days, Day{
+		day := Day{
 			Date:    d,
 			Hijri:   cal.Date(d),
 			Times:   times[i],
 			Periods: periodsByRule(times[i], times[i+1].Fajr),
-		})
+		}
+		if a := byDate[d.Format("2006-01-02")]; !a.Sunset.IsZero() {
+			day.Extra = &Extra{Sunset: a.Sunset, Midnight: a.Midnight, FirstThird: a.FirstThird, LastThird: a.LastThird}
+		}
+		out.Days = append(out.Days, day)
 	}
 	return out, nil
 }
