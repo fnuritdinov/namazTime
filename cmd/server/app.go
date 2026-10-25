@@ -43,5 +43,7 @@ func newApp(db *pgxpool.Pool, cfg config.Config) app {
 		ContentVersions:     cfg.ContentVersions,
 	})
 
+	api.WithSMS(newSMSService(db, slog.Default()))
+
 	return app{api: api, devices: deviceSvc, deviceRepo: deviceRepo}
 }

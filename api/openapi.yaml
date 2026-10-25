@@ -300,6 +300,45 @@ paths:
         "500":
           $ref: "#/components/responses/Internal"
 
+  /devices/me/sms:
+    post:
+      tags: [ devices ]
+      operationId: sendPrayerSms
+      summary: Отправить другу время намаза по SMS
+      security:
+        - deviceToken: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PrayerSmsRequest"
+      responses:
+        "200":
+          description: SMS принято к отправке
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PrayerSmsResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/Unsupported"
+        "429":
+          description: Лимит SMS на сегодня исчерпан (sms_limit)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          $ref: "#/components/responses/Internal"
+        "503":
+          $ref: "#/components/responses/Unavailable"
+
 
 components:
   securitySchemes:
@@ -536,6 +575,40 @@ components:
           type: string
           nullable: true
 
+    PrayerSmsRequest:
+      type: object
+      required: [ phone ]
+      properties:
+        phone:
+          type: string
+          example: "992901234567"
+        name:
+          type: string
+          maxLength: 20
+          example: Фаррух
+        cityId:
+          type: string
+          example: dushanbe
+        lat:
+          type: number
+          format: double
+        lon:
+          type: number
+          format: double
+        timeZoneId:
+          type: string
+          example: Asia/Dushanbe
+        lang:
+          type: string
+          enum: [ tg, ru ]
+          default: tg
+    PrayerSmsResponse:
+      type: object
+      required: [ remainingToday ]
+      properties:
+        remainingToday:
+          type: integer
+          example: 1
     # ---------- Методы расчёта ----------
     CalculationMethodId:
       type: string
@@ -844,6 +917,7 @@ components:
         - unsupported
         - rate_limited
         - unavailable
+        - sms_limit
         - internal
 
     ErrorBody:

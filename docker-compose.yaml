@@ -33,6 +33,10 @@ services:
       REDIS_ADDR: redis:6379
       APP_MIN_VERSION: "1.0.0"
       CONTENT_VERSIONS: "cities=1"
+      SMS_API_KEY: ${SMS_API_KEY}
+      SMS_HASH_KEY: ${SMS_HASH_KEY:-zikr-local-hash-key}
+      SMS_SENDER_ID: ${SMS_SENDER_ID:-}
+      SMS_DAILY_LIMIT: "10"
     depends_on:
       postgres:
         condition: service_healthy
