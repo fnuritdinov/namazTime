@@ -36,7 +36,7 @@ func TestPrayerTextFitsTwoSMS(t *testing.T) {
 			}
 		}
 	}
-	want := "Фаррух вақти намозро хотиррасон мекунад (25.10):\nБомдод 05:15\nПешин 12:20\nАср 15:30\nШом 17:45\nХуфтан 19:05"
+	want := "Фаррух вакти намозро хотиррасон мекунад (25.10):\nБомдод 05:15\nПешин 12:20\nАср 15:30\nШом 17:45\nХуфтан 19:05"
 	if got := PrayerText("tg", "Фаррух", p); got != want {
 		t.Errorf("got:\n%s\nwant:\n%s", got, want)
 	}
@@ -102,5 +102,15 @@ func TestServiceLimits(t *testing.T) {
 	}
 	if snd.sent != 3 {
 		t.Fatalf("sent=%d, want 3", snd.sent)
+	}
+}
+
+func TestPrayerTextNoTajikLetters(t *testing.T) {
+	text := PrayerText("tg", "Ҷамшед Ғоибов", Prayers{})
+	if strings.ContainsAny(text, "қҚӯӮҳҲҷҶғҒӣӢ") {
+		t.Errorf("в тексте остались таджикские буквы: %q", text)
+	}
+	if !strings.HasPrefix(text, "Чамшед Гоибов вакти") {
+		t.Errorf("неожиданное начало: %q", text)
 	}
 }

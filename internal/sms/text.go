@@ -22,6 +22,16 @@ type Prayers struct {
 	Fajr, Dhuhr, Asr, Maghrib, Isha time.Time
 }
 
+// smsSafe заменяет таджикские буквы на русские: с ними Payomchi/оператор не доставляет SMS.
+var smsSafe = strings.NewReplacer(
+	"қ", "к", "Қ", "К",
+	"ӯ", "у", "Ӯ", "У",
+	"ҳ", "х", "Ҳ", "Х",
+	"ҷ", "ч", "Ҷ", "Ч",
+	"ғ", "г", "Ғ", "Г",
+	"ӣ", "и", "Ӣ", "И",
+)
+
 var prayerNames = map[string][5]string{
 	"tg": {"Бомдод", "Пешин", "Аср", "Шом", "Хуфтан"},
 	"ru": {"Фаджр", "Зухр", "Аср", "Магриб", "Иша"},
@@ -71,5 +81,5 @@ func PrayerText(lang, name string, p Prayers) string {
 	for i := range n {
 		b.WriteString("\n" + n[i] + " " + t[i].Format("15:04"))
 	}
-	return b.String()
+	return smsSafe.Replace(b.String())
 }
