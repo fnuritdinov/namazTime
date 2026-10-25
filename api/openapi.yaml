@@ -577,7 +577,7 @@ components:
 
     PrayerSmsRequest:
       type: object
-      required: [ phone ]
+      required: [ phone, name ]
       properties:
         phone:
           type: string
@@ -585,7 +585,8 @@ components:
         name:
           type: string
           maxLength: 20
-          example: Фаррух
+          description: Имя и фамилия отправителя, до 20 латинских символов (кириллицу сервер переведёт в латиницу). Только буквы, пробел, дефис.
+          example: Buzurgmehr Majidov
         cityId:
           type: string
           example: dushanbe
@@ -598,10 +599,6 @@ components:
         timeZoneId:
           type: string
           example: Asia/Dushanbe
-        lang:
-          type: string
-          enum: [ tg, ru ]
-          default: tg
     PrayerSmsResponse:
       type: object
       required: [ remainingToday ]

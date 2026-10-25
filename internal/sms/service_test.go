@@ -10,38 +10,6 @@ import (
 	"time"
 )
 
-func TestCleanName(t *testing.T) {
-	ok := map[string]string{"": "", "  Фаррух  ": "Фаррух", "Анна-Мария": "Анна-Мария", "Farrukh N": "Farrukh N"}
-	for in, want := range ok {
-		got, err := CleanName(in)
-		if err != nil || got != want {
-			t.Errorf("CleanName(%q) = %q, %v; want %q", in, got, err, want)
-		}
-	}
-	for _, bad := range []string{"bit.ly/x", "Звони 901234567", "Ахмад!", strings.Repeat("а", 21)} {
-		if _, err := CleanName(bad); err == nil {
-			t.Errorf("CleanName(%q): want error", bad)
-		}
-	}
-}
-
-func TestPrayerTextFitsTwoSMS(t *testing.T) {
-	at := func(h, m int) time.Time { return time.Date(2026, 10, 25, h, m, 0, 0, time.UTC) }
-	p := Prayers{Date: at(0, 0), Fajr: at(5, 15), Dhuhr: at(12, 20), Asr: at(15, 30), Maghrib: at(17, 45), Isha: at(19, 5)}
-
-	for _, lang := range []string{"tg", "ru"} {
-		for _, name := range []string{"", "Фаррух", strings.Repeat("Ж", MaxNameLen)} {
-			if n := len([]rune(PrayerText(lang, name, p))); n > MaxTwoSMS {
-				t.Errorf("lang=%s name=%q: %d > %d", lang, name, n, MaxTwoSMS)
-			}
-		}
-	}
-	want := "Фаррух вакти намозро хотиррасон мекунад (25.10):\nБомдод 05:15\nПешин 12:20\nАср 15:30\nШом 17:45\nХуфтан 19:05"
-	if got := PrayerText("tg", "Фаррух", p); got != want {
-		t.Errorf("got:\n%s\nwant:\n%s", got, want)
-	}
-}
-
 // memStore — журнал в памяти вместо Postgres.
 type memStore struct{ rows [][2]string } // [deviceID, phoneHash]
 
@@ -105,12 +73,47 @@ func TestServiceLimits(t *testing.T) {
 	}
 }
 
-func TestPrayerTextNoTajikLetters(t *testing.T) {
-	text := PrayerText("tg", "Ҷамшед Ғоибов", Prayers{})
-	if strings.ContainsAny(text, "қҚӯӮҳҲҷҶғҒӣӢ") {
-		t.Errorf("в тексте остались таджикские буквы: %q", text)
+func TestCleanName(t *testing.T) {
+	ok := map[string]string{
+		"  Фаррух  ":         "Farrukh",
+		"Бузургмеҳр Маҷидов": "Buzurgmehr Majidov",
+		"Анна-Мария":         "Anna-Mariya",
+		"Farrukh N":          "Farrukh N",
 	}
-	if !strings.HasPrefix(text, "Чамшед Гоибов вакти") {
-		t.Errorf("неожиданное начало: %q", text)
+	for in, want := range ok {
+		got, err := CleanName(in)
+		if err != nil || got != want {
+			t.Errorf("CleanName(%q) = %q, %v; want %q", in, got, err, want)
+		}
+	}
+	for _, bad := range []string{"", "   ", "bit.ly/x", "Звони 901234567", "Ахмад!", "محمد", strings.Repeat("a", 21), "Шшшшшшшшшшш"} {
+		if _, err := CleanName(bad); err == nil {
+			t.Errorf("CleanName(%q): want error", bad)
+		}
+	}
+}
+
+func TestPrayerTextFitsOneSMS(t *testing.T) {
+	at := func(h, m int) time.Time { return time.Date(2026, 10, 25, h, m, 0, 0, time.UTC) }
+	p := Prayers{
+		Date:    at(0, 0),
+		Fajr:    Slot{at(5, 0), at(6, 0)},
+		Dhuhr:   Slot{at(12, 40), at(16, 0)},
+		Asr:     Slot{at(16, 1), at(17, 0)},
+		Maghrib: Slot{at(17, 2), at(18, 0)},
+		Isha:    Slot{at(18, 1), at(4, 59)},
+	}
+	text := PrayerText(strings.Repeat("W", MaxNameLen), p) // самое длинное имя
+	if n := len(text); n > MaxOneSMS {
+		t.Errorf("%d символов > %d", n, MaxOneSMS)
+	}
+	for _, r := range text {
+		if r > 127 {
+			t.Errorf("не латиница: %q", r)
+		}
+	}
+	want := "Vaqti namoz 25.10.2026 az nomi Buzurgmehr Majidov:\nBomdod 05:00 - 06:00\nPeshin 12:40 - 16:00\nAsr 16:01 - 17:00\nShom 17:02 - 18:00\nKhuftan 18:01 - 04:59"
+	if got := PrayerText("Buzurgmehr Majidov", p); got != want {
+		t.Errorf("got:\n%s\nwant:\n%s", got, want)
 	}
 }

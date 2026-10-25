@@ -21,7 +21,7 @@ func (s *Server) SendPrayerSms(ctx context.Context, req SendPrayerSmsRequestObje
 	}
 	b := req.Body
 
-	name, err := sms.CleanName(deref(b.Name))
+	name, err := sms.CleanName(b.Name)
 	if err != nil {
 		return SendPrayerSms400JSONResponse{BadRequestJSONResponse(newError(ctx, "invalid_argument", err.Error()))}, nil
 	}
@@ -59,14 +59,16 @@ func (s *Server) SendPrayerSms(ctx context.Context, req SendPrayerSmsRequestObje
 		return SendPrayerSms422JSONResponse{UnsupportedJSONResponse(newError(ctx, "unsupported", "no prayer times for today"))}, nil
 	}
 
+	// Начало и конец каждого намаза (для Таджикистана — официальные из таблицы Шуро)
 	d := sch.Days[0]
-	lang := "tg"
-	if b.Lang != nil {
-		lang = string(*b.Lang)
-	}
-	text := sms.PrayerText(lang, name, sms.Prayers{
-		Date: d.Date, Fajr: d.Times.Fajr, Dhuhr: d.Times.Dhuhr, Asr: d.Times.Asr,
-		Maghrib: d.Times.Maghrib, Isha: d.Times.Isha,
+	slot := func(r schedule.Range) sms.Slot { return sms.Slot{From: r.Start, To: r.End} }
+	text := sms.PrayerText(name, sms.Prayers{
+		Date:    d.Date,
+		Fajr:    slot(d.Periods.Fajr),
+		Dhuhr:   slot(d.Periods.Dhuhr),
+		Asr:     slot(d.Periods.Asr),
+		Maghrib: slot(d.Periods.Maghrib),
+		Isha:    slot(d.Periods.Isha),
 	})
 
 	remaining, err := s.sms.Send(ctx, device.IDFrom(ctx), b.Phone, text)
