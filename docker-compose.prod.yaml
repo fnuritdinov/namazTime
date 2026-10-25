@@ -31,6 +31,10 @@ services:
       APP_MIN_VERSION: ${APP_MIN_VERSION:-1.0.0}
       APP_LATEST_VERSION: ${APP_LATEST_VERSION:-1.0.0}
       CONTENT_VERSIONS: ${CONTENT_VERSIONS:-cities=1}
+      SMS_API_KEY: ${SMS_API_KEY:-}
+      SMS_HASH_KEY: ${SMS_HASH_KEY:-}
+      SMS_SENDER_ID: ${SMS_SENDER_ID:-}
+      SMS_DAILY_LIMIT: ${SMS_DAILY_LIMIT:-20}
     depends_on:
       postgres:
         condition: service_healthy
