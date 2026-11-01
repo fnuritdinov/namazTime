@@ -24,6 +24,7 @@ type Day struct {
 // Timetable — официальное расписание города на диапазон дат.
 type Timetable struct {
 	SourceName  map[string]string // {"tg": "Шӯрои уламои Тоҷикистон", ...}
+	SourceURL   string
 	UpdatedAt   time.Time
 	Days        map[string]Day // ключ — дата "2006-01-02"
 	Adjustments map[string]int // поправки города в минутах: "fajr" → -3

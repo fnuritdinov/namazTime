@@ -783,6 +783,10 @@ components:
           $ref: "#/components/schemas/PrayerSource"
         sourceName:
           $ref: "#/components/schemas/LocalizedString"
+        sourceUrl:
+          type: string
+          description: Ссылка на сайт источника официального времени. Только для source = official.
+          example: "https://takvim.tj"
         updatedAt:
           type: string
           format: date-time

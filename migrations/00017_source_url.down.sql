@@ -1,0 +1,1 @@
+ALTER TABLE official_sources DROP COLUMN IF EXISTS url;

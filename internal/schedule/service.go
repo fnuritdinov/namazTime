@@ -99,6 +99,7 @@ type Schedule struct {
 	Madhab     string
 	Source     string            // "official" | "calculated"
 	SourceName map[string]string // только для official
+	SourceURL  string            // только для official; "" — нет ссылки
 	UpdatedAt  *time.Time        // только для official
 	Days       []Day
 }
@@ -262,6 +263,7 @@ func (s *Service) officialSchedule(ctx context.Context, out Schedule, r Request,
 
 	out.Source = "official"
 	out.SourceName = tt.SourceName
+	out.SourceURL = tt.SourceURL
 	updated := tt.UpdatedAt
 	out.UpdatedAt = &updated
 	out.Days = nil

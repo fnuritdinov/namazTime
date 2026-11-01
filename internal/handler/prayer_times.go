@@ -115,6 +115,10 @@ func toPrayerTimesResponse(s schedule.Schedule) PrayerTimesResponse {
 		resp.SourceName = &name
 	}
 	resp.UpdatedAt = s.UpdatedAt
+	if s.SourceURL != "" {
+		u := s.SourceURL
+		resp.SourceUrl = &u
+	}
 
 	return resp
 }

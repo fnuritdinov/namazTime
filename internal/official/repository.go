@@ -48,7 +48,7 @@ func (r *Repository) Get(ctx context.Context, cityID string, from, to time.Time)
 		       COALESCE(to_char(d.maghrib_end, 'HH24:MI'), ''),
 		       COALESCE(to_char(d.isha_end, 'HH24:MI'), ''),
 		       COALESCE(d.hijri_day, 0), COALESCE(d.hijri_month, 0), COALESCE(d.hijri_year, 0),
-		       t.updated_at, s.name
+		     t.updated_at, s.name, COALESCE(s.url, '')
 		FROM official_timetable_days d
 		JOIN official_timetables t ON t.id = d.timetable_id
 		JOIN official_sources s    ON s.id = t.source_id
@@ -67,17 +67,19 @@ func (r *Repository) Get(ctx context.Context, cityID string, from, to time.Time)
 			d         Day
 			updatedAt time.Time
 			name      map[string]string
+			url       string
 		)
 		if err := rows.Scan(&date,
 			&d.Fajr, &d.Sunrise, &d.Dhuhr, &d.Asr, &d.Maghrib, &d.Isha, &d.Imsak,
 			&d.FajrEnd, &d.DhuhrEnd, &d.AsrEnd, &d.MakruhStart, &d.MakruhEnd, &d.MaghribEnd, &d.IshaEnd,
 			&d.HijriDay, &d.HijriMonth, &d.HijriYear,
-			&updatedAt, &name,
+			&updatedAt, &name, &url,
 		); err != nil {
 			return Timetable{}, fmt.Errorf("scan official day: %w", err)
 		}
 		tt.Days[date.Format("2006-01-02")] = d
 		tt.SourceName = name
+		tt.SourceURL = url
 		if updatedAt.After(tt.UpdatedAt) {
 			tt.UpdatedAt = updatedAt
 		}
