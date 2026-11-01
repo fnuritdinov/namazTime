@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"nTime/internal/takvim"
 	"net/http"
 	"os"
 	"os/signal"
@@ -68,6 +69,13 @@ func run(log *slog.Logger) error {
 		SourceID: "shuroiulamo-tj",
 	}
 	go shuroWorker.Run(ctx)
+
+	// Запасной источник: takvim.tj (3 дня вперёд), пока Шуро не опубликовал месяц
+	takvimWorker := &takvim.Worker{
+		Client: takvim.NewClient(), Save: &shuro.Store{DB: db}, Log: log,
+		Every: 6 * time.Hour, CityID: "dushanbe", SourceID: "takvim-tj",
+	}
+	go takvimWorker.Run(ctx)
 
 	// 3. Адреса и фильтры
 	router := newRouter(app.api, db, rdb, log)

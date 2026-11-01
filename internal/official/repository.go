@@ -36,7 +36,7 @@ func (r *Repository) Get(ctx context.Context, cityID string, from, to time.Time)
 
 	// 2. Дни расписания
 	rows, err := r.db.Query(ctx, `
-		SELECT d.date,
+		SELECT DISTINCT ON (d.date) d.date,
 		       to_char(d.fajr, 'HH24:MI'), to_char(d.sunrise, 'HH24:MI'), to_char(d.dhuhr, 'HH24:MI'),
 		       to_char(d.asr, 'HH24:MI'), to_char(d.maghrib, 'HH24:MI'), to_char(d.isha, 'HH24:MI'),
 		       COALESCE(to_char(d.imsak, 'HH24:MI'), ''),
@@ -53,7 +53,7 @@ func (r *Repository) Get(ctx context.Context, cityID string, from, to time.Time)
 		JOIN official_timetables t ON t.id = d.timetable_id
 		JOIN official_sources s    ON s.id = t.source_id
 		WHERE t.city_id = $1 AND d.date BETWEEN $2 AND $3
-		ORDER BY d.date`,
+		ORDER BY d.date, t.source_id = 'takvim-tj'`,
 		baseCityID, from, to)
 	if err != nil {
 		return Timetable{}, fmt.Errorf("select official days: %w", err)
