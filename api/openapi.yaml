@@ -864,7 +864,7 @@ components:
       properties:
         platform:
           type: string
-          enum: [ ios ]
+          enum: [ ios, android ]
         appVersion:
           type: string
           example: 1.0.0

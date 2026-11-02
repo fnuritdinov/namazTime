@@ -72,7 +72,7 @@ func TestRegister_Invalid(t *testing.T) {
 	svc := NewService(newMem())
 	var ie *InvalidError
 	for name, d := range map[string]Device{
-		"platform": {Platform: "android", AppVersion: "1.0.0"},
+		"platform": {Platform: "windows", AppVersion: "1.0.0"},
 		"version":  {Platform: "ios", AppVersion: "latest"},
 		"country":  {Platform: "ios", AppVersion: "1.0.0", Country: "tj"},
 		"timezone": {Platform: "ios", AppVersion: "1.0.0", TimeZoneID: "Mars/Olympus"},
@@ -117,5 +117,13 @@ func TestSetPush(t *testing.T) {
 		if err := svc.SetPush(ctx, "dev_1", p); !errors.As(err, &ie) {
 			t.Errorf("%s: want InvalidError, got %v", name, err)
 		}
+	}
+}
+
+func TestRegister_Android(t *testing.T) {
+	svc := NewService(newMem())
+	d := Device{Platform: "android", AppVersion: "1.1", Locale: "ru_RU", Country: "TJ", TimeZoneID: "Asia/Dushanbe"}
+	if _, _, err := svc.Register(context.Background(), d); err != nil {
+		t.Fatalf("android must be allowed: %v", err)
 	}
 }

@@ -44,7 +44,7 @@ const maxTopics = 20
 func (s *Service) Register(ctx context.Context, d Device) (id, token string, err error) {
 	d.Locale = normalizeLocale(d.Locale) // ru-TJ, ru_TJ@calendar=... → ru_TJ; мусор → ""
 	switch {
-	case d.Platform != "ios":
+	case d.Platform != "ios" && d.Platform != "android":
 		return "", "", &InvalidError{Msg: "platform must be ios"}
 	case !versionRe.MatchString(d.AppVersion):
 		return "", "", &InvalidError{Msg: "appVersion must look like 1.0.0"}
