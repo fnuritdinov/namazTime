@@ -34,8 +34,14 @@ func (r Row) Validate() error {
 			return fmt.Errorf("%s %q: expected HH:MM", s.name, s.v)
 		}
 		// "HH:MM" с ведущими нулями можно сравнивать как строки
-		if i > 0 && s.v <= seq[i-1].v {
-			return fmt.Errorf("%s (%s) must be later than %s (%s)", s.name, s.v, seq[i-1].name, seq[i-1].v)
+		// "HH:MM" с ведущими нулями можно сравнивать как строки.
+		// Чётные позиции — начало периода. Начало может совпасть с концом предыдущего
+		// (у Шуро бывает: Аср до 17:01, макрӯҳ с 17:01). Конец периода — строго позже его начала.
+		if i > 0 {
+			startOfNext := i%2 == 0
+			if s.v < seq[i-1].v || (!startOfNext && s.v == seq[i-1].v) {
+				return fmt.Errorf("%s (%s) must be later than %s (%s)", s.name, s.v, seq[i-1].name, seq[i-1].v)
+			}
 		}
 	}
 	if _, err := time.Parse("15:04", r.IshaEnd); err != nil {
